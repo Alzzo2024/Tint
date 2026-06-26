@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 import { ArrowLeft, Heart } from "lucide-react";
 import { ClientOnly } from "@tanstack/react-router";
+import { useTranslation } from "@/lib/i18n";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({

@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -39,6 +38,7 @@ import type { BrushKind, BrushSettings } from "@/lib/drawing/brushes";
 import { DrawingCanvas, type ToolMode } from "@/components/editor/DrawingCanvas";
 import { ColorWheel } from "@/components/editor/ColorWheel";
 import { kvGet, kvSet } from "@/lib/db";
+import { useTranslation } from "@/lib/i18n";
 
 
 export const Route = createFileRoute("/p/$id")({
