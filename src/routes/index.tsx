@@ -227,11 +227,9 @@ function ProjectCard({
             danger
             icon={<Trash2 className="h-4 w-4" strokeWidth={2.5} />}
             label={t("gallery.delete")}
-            onClick={async () => {
+            onClick={() => {
               setMenu(false);
-              if (confirm(t("gallery.deleteConfirm"))) {
-                await deleteProject(id);
-              }
+              onDelete();
             }}
           />
         </div>
