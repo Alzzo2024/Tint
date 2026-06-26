@@ -365,6 +365,63 @@ export class TintEngine {
     this.flipH = !this.flipH;
     this.notify();
   }
+  setSymmetry(mode: SymmetryMode) {
+    this.symmetry = mode;
+    this.notify();
+  }
+  toggleGuides() {
+    this.showGuides = !this.showGuides;
+    this.notify();
+  }
+
+  // ---- Fill / Selection ----
+  fillAt(x: number, y: number, hex: string, tolerance = 24) {
+    const l = this.activeLayer;
+    if (!l) return;
+    const ctx = l.canvas.getContext("2d")!;
+    const before = ctx.getImageData(0, 0, this.width, this.height);
+    floodFill(l.canvas, x, y, hex, tolerance);
+    const after = ctx.getImageData(0, 0, this.width, this.height);
+    this.pushHistory({ layerId: l.id, before, after });
+    this.notify();
+  }
+  setSelection(sel: Selection | null) {
+    if (sel) {
+      const x = Math.max(0, Math.min(this.width, Math.round(sel.x)));
+      const y = Math.max(0, Math.min(this.height, Math.round(sel.y)));
+      const w = Math.max(0, Math.min(this.width - x, Math.round(sel.w)));
+      const h = Math.max(0, Math.min(this.height - y, Math.round(sel.h)));
+      this.selection = w > 1 && h > 1 ? { x, y, w, h } : null;
+    } else {
+      this.selection = null;
+    }
+    this.notify();
+  }
+  deleteSelection() {
+    const l = this.activeLayer;
+    const s = this.selection;
+    if (!l || !s) return;
+    const ctx = l.canvas.getContext("2d")!;
+    const before = ctx.getImageData(0, 0, this.width, this.height);
+    ctx.clearRect(s.x, s.y, s.w, s.h);
+    const after = ctx.getImageData(0, 0, this.width, this.height);
+    this.pushHistory({ layerId: l.id, before, after });
+    this.notify();
+  }
+  fillSelection(hex: string) {
+    const l = this.activeLayer;
+    const s = this.selection;
+    if (!l) return;
+    const ctx = l.canvas.getContext("2d")!;
+    const before = ctx.getImageData(0, 0, this.width, this.height);
+    ctx.fillStyle = hex;
+    if (s) ctx.fillRect(s.x, s.y, s.w, s.h);
+    else ctx.fillRect(0, 0, this.width, this.height);
+    const after = ctx.getImageData(0, 0, this.width, this.height);
+    this.pushHistory({ layerId: l.id, before, after });
+    this.notify();
+  }
+
 
   /** Converte coords do ecrã → coords da tela. */
   screenToCanvas(sx: number, sy: number): { x: number; y: number } {
