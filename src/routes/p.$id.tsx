@@ -10,6 +10,7 @@ import {
   Maximize2,
   Minimize2,
   FlipHorizontal,
+  FlipVertical,
   Crosshair,
   Download,
   Pencil,
@@ -32,6 +33,8 @@ import {
   SquareDashed,
   Grid3x3,
   Wand2,
+  Hand,
+  Type,
 } from "lucide-react";
 import { TintEngine, type SymmetryMode } from "@/lib/drawing/engine";
 import type { BrushKind, BrushSettings } from "@/lib/drawing/brushes";
