@@ -1,16 +1,15 @@
-export const ptPT = {
-  app: {
-    name: "Tint",
-    tagline: "Desenha em qualquer lado.",
-  },
+import type { Translation } from "./pt-PT";
+
+export const ptBR: Translation = {
+  app: { name: "Tint", tagline: "Desenhe em qualquer lugar." },
   gallery: {
     title: "Galeria",
-    empty: "Ainda não tens projetos. Cria o primeiro.",
+    empty: "Ainda não há projetos. Crie o primeiro.",
     new: "Novo projeto",
     rename: "Renomear",
     duplicate: "Duplicar",
-    delete: "Apagar",
-    deleteConfirm: "Apagar este projeto? Esta ação não pode ser anulada.",
+    delete: "Excluir",
+    deleteConfirm: "Excluir este projeto? Esta ação não pode ser desfeita.",
     untitled: "Sem título",
     open: "Abrir",
     sort: "Ordenar",
@@ -22,7 +21,7 @@ export const ptPT = {
     name: "Nome",
     preset: "Modelo",
     square: "Quadrado (1:1)",
-    screen: "Ecrã (16:9)",
+    screen: "Tela (16:9)",
     a4: "A4 (300 dpi)",
     custom: "Personalizado",
     width: "Largura",
@@ -33,14 +32,12 @@ export const ptPT = {
   },
   editor: {
     back: "Galeria",
-    undo: "Anular",
+    undo: "Desfazer",
     redo: "Refazer",
-    resetView: "Repor vista",
-    fullscreen: "Ecrã inteiro",
-    exitFullscreen: "Sair do ecrã inteiro",
+    resetView: "Redefinir vista",
+    fullscreen: "Tela cheia",
+    exitFullscreen: "Sair da tela cheia",
     flipH: "Inverter horizontalmente",
-    flipV: "Inverter verticalmente",
-    tools: "Ferramentas",
     layers: "Camadas",
     color: "Cor",
     brush: "Pincel",
@@ -51,9 +48,9 @@ export const ptPT = {
     exportPng: "PNG",
     exportJpeg: "JPEG",
     transparent: "Fundo transparente",
-    settings: "Definições",
-    saved: "Guardado",
-    saving: "A guardar…",
+    settings: "Configurações",
+    saved: "Salvo",
+    saving: "Salvando…",
     more: "Mais",
   },
   more: {
@@ -62,7 +59,7 @@ export const ptPT = {
     symH: "Horizontal",
     symV: "Vertical",
     symBoth: "Ambas",
-    guides: "Grelha e guias",
+    guides: "Grade e guias",
     guidesHint: "Linhas para alinhar o desenho",
     selection: "Seleção",
     clearSelection: "Apagar seleção",
@@ -71,7 +68,7 @@ export const ptPT = {
   },
   install: {
     title: "Instalar Tint",
-    body: "Adiciona o Tint ao ecrã principal para uso rápido em ecrã inteiro.",
+    body: "Adicione o Tint à tela inicial para acesso rápido em tela cheia.",
     cta: "Instalar app",
     later: "Mais tarde",
   },
@@ -85,26 +82,14 @@ export const ptPT = {
     fill: "Balde de tinta",
     select: "Seleção",
     move: "Mover",
-    pan: "Mão",
-    text: "Texto",
-  },
-  text: {
-    title: "Adicionar texto",
-    placeholder: "Escreve aqui…",
-    font: "Tipo de letra",
-    size: "Tamanho",
-    bold: "Negrito",
-    italic: "Itálico",
-    underline: "Sublinhado",
-    add: "Adicionar",
   },
   layers: {
     title: "Camadas",
     new: "Nova camada",
     duplicate: "Duplicar",
-    delete: "Apagar",
+    delete: "Excluir",
     clear: "Limpar",
-    mergeDown: "Unir com a de baixo",
+    mergeDown: "Mesclar abaixo",
     moveUp: "Subir",
     moveDown: "Descer",
     visible: "Visível",
@@ -116,40 +101,23 @@ export const ptPT = {
     palettes: "Paletas",
     newPalette: "Nova paleta",
     addColor: "Adicionar cor",
-    pickFromCanvas: "Apanhar da tela (manter premido)",
+    pickFromCanvas: "Pegar da tela (segure)",
   },
   settings: {
-    title: "Definições",
+    title: "Configurações",
     language: "Idioma",
     languagePt: "Português (Portugal)",
     languageEn: "English (UK)",
     appearance: "Aparência",
-    glassIntensity: "Intensidade vidro",
+    glassIntensity: "Intensidade do vidro",
     gestures: "Gestos",
-    twoFingerTap: "Dois toques: Anular",
+    twoFingerTap: "Dois toques: Desfazer",
     threeFingerTap: "Três toques: Refazer",
     pressureSupport: "Suporte de pressão de stylus",
     palmRejection: "Rejeição de palma",
     about: "Sobre",
-    supportDev: "Apoiar o projecto",
+    supportDev: "Apoiar o projeto",
     version: "Versão",
   },
-  common: {
-    ok: "OK",
-    cancel: "Cancelar",
-    save: "Guardar",
-    close: "Fechar",
-    delete: "Apagar",
-    confirm: "Confirmar",
-    add: "Adicionar",
-  },
+  common: { ok: "OK", cancel: "Cancelar", save: "Salvar", close: "Fechar", delete: "Excluir", confirm: "Confirmar" },
 };
-
-type Base = typeof ptPT;
-export type Translation = Omit<Base, "editor" | "tools" | "text" | "common"> & {
-  editor: Omit<Base["editor"], "flipV" | "tools"> & { flipV?: string; tools?: string };
-  tools: Omit<Base["tools"], "pan" | "text"> & { pan?: string; text?: string };
-  text?: Base["text"];
-  common: Omit<Base["common"], "add"> & { add?: string };
-};
-

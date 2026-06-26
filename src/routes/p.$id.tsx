@@ -10,6 +10,7 @@ import {
   Maximize2,
   Minimize2,
   FlipHorizontal,
+  FlipVertical,
   Crosshair,
   Download,
   Pencil,
@@ -32,6 +33,8 @@ import {
   SquareDashed,
   Grid3x3,
   Wand2,
+  Hand,
+  Type,
 } from "lucide-react";
 import { TintEngine, type SymmetryMode } from "@/lib/drawing/engine";
 import type { BrushKind, BrushSettings } from "@/lib/drawing/brushes";
@@ -79,9 +82,10 @@ function Editor() {
     stabilizer: 0.3,
   });
   const [tool, setTool] = useState<ToolMode>("brush");
-  const [panel, setPanel] = useState<"none" | "brush" | "color" | "layers" | "export" | "more">(
-    "none",
-  );
+  const [panel, setPanel] = useState<
+    "none" | "brush" | "color" | "layers" | "export" | "more" | "tools" | "text"
+  >("none");
+  const [textPending, setTextPending] = useState<{ x: number; y: number } | null>(null);
 
   const [fullscreen, setFullscreen] = useState(false);
   const [recentColors, setRecentColors] = useState<string[]>([
@@ -187,12 +191,15 @@ function Editor() {
           setTool("brush");
         }}
         onToolConsumed={() => setTool("brush")}
+        onTextAt={(x, y) => {
+          setTextPending({ x, y });
+          setPanel("text");
+        }}
         onUndoGesture={() => engine.undo()}
         onRedoGesture={() => engine.redo()}
       />
 
-
-      {/* Top bar */}
+      {/* Top bar — apenas voltar + estado */}
       {!fullscreen && (
         <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between p-3">
           <div className="pointer-events-auto flex items-center gap-2">
@@ -214,54 +221,13 @@ function Editor() {
             </div>
           </div>
           <div className="pointer-events-auto flex items-center gap-2">
-            <IconBtn
-              label={t("editor.undo")}
-              onClick={() => engine.undo()}
-              disabled={!engine.canUndo()}
-            >
-              <Undo2 className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.redo")}
-              onClick={() => engine.redo()}
-              disabled={!engine.canRedo()}
-            >
-              <Redo2 className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.resetView")}
-              onClick={() => {
-                const r = document
-                  .querySelector("canvas")!
-                  .getBoundingClientRect();
-                engine.resetView(r.width, r.height);
-              }}
-            >
-              <Crosshair className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.flipH")}
-              onClick={() => engine.flipHorizontal()}
-              active={engine.flipH}
-            >
-              <FlipHorizontal className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.more")}
-              onClick={() => setPanel(panel === "more" ? "none" : "more")}
-              active={panel === "more" || engine.symmetry !== "none" || engine.showGuides}
-            >
-              <Wand2 className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.fullscreen")}
-              onClick={() => setFullscreen(true)}
-            >
+            <IconBtn label={t("editor.fullscreen")} onClick={() => setFullscreen(true)}>
               <Maximize2 className="h-5 w-5" strokeWidth={2.5} />
             </IconBtn>
           </div>
         </header>
       )}
+
 
 
       {/* Fullscreen exit */}
@@ -303,6 +269,13 @@ function Editor() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-3">
           <div className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1.5">
             <ToolBtn
+              active={panel === "tools"}
+              onClick={() => setPanel(panel === "tools" ? "none" : "tools")}
+              label={t("editor.more")}
+            >
+              <Plus className="h-5 w-5" strokeWidth={2.75} />
+            </ToolBtn>
+            <ToolBtn
               active={panel === "brush"}
               onClick={() => setPanel(panel === "brush" ? "none" : "brush")}
               label={t("editor.brush")}
@@ -328,6 +301,20 @@ function Editor() {
               label={t("tools.fill")}
             >
               <PaintBucket className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "pan"}
+              onClick={() => setTool(tool === "pan" ? "brush" : "pan")}
+              label={t("tools.pan")}
+            >
+              <Hand className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "text"}
+              onClick={() => setTool(tool === "text" ? "brush" : "text")}
+              label={t("tools.text")}
+            >
+              <Type className="h-5 w-5" strokeWidth={2.5} />
             </ToolBtn>
             <ToolBtn
               active={tool === "select"}
@@ -358,6 +345,7 @@ function Editor() {
               <Download className="h-5 w-5" strokeWidth={2.5} />
             </ToolBtn>
           </div>
+
         </div>
       )}
 
@@ -442,6 +430,66 @@ function Editor() {
           <ExportPanel engine={engine} />
         </Panel>
       )}
+
+      {panel === "tools" && (
+        <Panel onClose={() => setPanel("none")} title={t("editor.more")}>
+          <div className="grid grid-cols-3 gap-2">
+            <ActionTile
+              label={t("editor.undo")}
+              icon={<Undo2 className="h-5 w-5" strokeWidth={2.5} />}
+              onClick={() => engine.undo()}
+              disabled={!engine.canUndo()}
+            />
+            <ActionTile
+              label={t("editor.redo")}
+              icon={<Redo2 className="h-5 w-5" strokeWidth={2.5} />}
+              onClick={() => engine.redo()}
+              disabled={!engine.canRedo()}
+            />
+            <ActionTile
+              label={t("editor.resetView")}
+              icon={<Crosshair className="h-5 w-5" strokeWidth={2.5} />}
+              onClick={() => {
+                const r = document.querySelector("canvas")!.getBoundingClientRect();
+                engine.resetView(r.width, r.height);
+              }}
+            />
+            <ActionTile
+              label={t("editor.flipH")}
+              icon={<FlipHorizontal className="h-5 w-5" strokeWidth={2.5} />}
+              active={engine.flipH}
+              onClick={() => engine.flipHorizontal()}
+            />
+            <ActionTile
+              label={t("editor.flipV")}
+              icon={<FlipVertical className="h-5 w-5" strokeWidth={2.5} />}
+              active={engine.flipV}
+              onClick={() => engine.flipVertical()}
+            />
+            <ActionTile
+              label={t("editor.more")}
+              icon={<Wand2 className="h-5 w-5" strokeWidth={2.5} />}
+              active={engine.symmetry !== "none" || engine.showGuides}
+              onClick={() => setPanel("more")}
+            />
+          </div>
+        </Panel>
+      )}
+
+      {panel === "text" && textPending && (
+        <Panel onClose={() => { setPanel("none"); setTextPending(null); }} title={t("text.title")}>
+          <TextPanel
+            color={brush.color}
+            onCancel={() => { setPanel("none"); setTextPending(null); }}
+            onConfirm={(opts) => {
+              engine.addText({ x: textPending.x, y: textPending.y, color: brush.color, ...opts });
+              setPanel("none");
+              setTextPending(null);
+            }}
+          />
+        </Panel>
+      )}
+
     </div>
   );
 }
@@ -734,13 +782,21 @@ function ExportPanel({ engine }: { engine: TintEngine }) {
   const [transparent, setTransparent] = useState(false);
 
   async function exportAs(type: "image/png" | "image/jpeg") {
-    const blob = await engine.exportImage({ type, transparent });
+    // JPEG não suporta transparência: força fundo se necessário.
+    const useTransparent = type === "image/png" && transparent;
+    const blob = await engine.exportImage({ type, transparent: useTransparent });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `tint-${Date.now()}.${type === "image/png" ? "png" : "jpg"}`;
+    a.rel = "noopener";
+    a.target = "_blank";
+    document.body.appendChild(a);
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 1500);
   }
 
   return (
@@ -877,4 +933,169 @@ function MorePanel({
     </div>
   );
 }
+
+function ActionTile({
+  label,
+  icon,
+  onClick,
+  active,
+  disabled,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border px-3 py-3 text-xs transition disabled:opacity-40 ${
+        active
+          ? "border-transparent bg-gradient-brand text-primary-foreground"
+          : "border-white/10 bg-white/5 hover:bg-white/10"
+      }`}
+    >
+      {icon}
+      <span className="text-center leading-tight">{label}</span>
+    </button>
+  );
+}
+
+const TEXT_FONTS = [
+  { id: "ui-sans-serif, system-ui, sans-serif", label: "Sans" },
+  { id: "ui-serif, Georgia, serif", label: "Serif" },
+  { id: "ui-monospace, SFMono-Regular, Menlo, monospace", label: "Mono" },
+  { id: '"Comic Sans MS", "Comic Sans", cursive', label: "Comic" },
+  { id: '"Times New Roman", Times, serif', label: "Times" },
+];
+
+function TextPanel({
+  color,
+  onConfirm,
+  onCancel,
+}: {
+  color: string;
+  onConfirm: (opts: {
+    text: string;
+    fontFamily: string;
+    fontSize: number;
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+  }) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [text, setText] = useState("");
+  const [fontFamily, setFontFamily] = useState(TEXT_FONTS[0].id);
+  const [fontSize, setFontSize] = useState(48);
+  const [bold, setBold] = useState(false);
+  const [italic, setItalic] = useState(false);
+  const [underline, setUnderline] = useState(false);
+
+  return (
+    <div className="space-y-3">
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={t("text.placeholder")}
+        className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/30"
+        rows={3}
+        style={{
+          fontFamily,
+          fontWeight: bold ? 700 : 400,
+          fontStyle: italic ? "italic" : "normal",
+          textDecoration: underline ? "underline" : "none",
+          color,
+        }}
+      />
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">{t("text.font")}</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {TEXT_FONTS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFontFamily(f.id)}
+              style={{ fontFamily: f.id }}
+              className={`rounded-xl border px-2 py-2 text-xs ${
+                fontFamily === f.id
+                  ? "border-transparent bg-gradient-brand text-primary-foreground"
+                  : "border-white/10 bg-white/5 hover:bg-white/10"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="mb-1.5 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">{t("text.size")}</span>
+          <span className="tabular-nums">{fontSize}px</span>
+        </div>
+        <input
+          type="range"
+          min={8}
+          max={200}
+          value={fontSize}
+          onChange={(e) => setFontSize(Number(e.target.value))}
+          className="w-full accent-[#ca8fff]"
+        />
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        <button
+          onClick={() => setBold((v) => !v)}
+          className={`rounded-xl border px-2 py-2 text-sm font-bold ${
+            bold
+              ? "border-transparent bg-gradient-brand text-primary-foreground"
+              : "border-white/10 bg-white/5"
+          }`}
+        >
+          B
+        </button>
+        <button
+          onClick={() => setItalic((v) => !v)}
+          className={`rounded-xl border px-2 py-2 text-sm italic ${
+            italic
+              ? "border-transparent bg-gradient-brand text-primary-foreground"
+              : "border-white/10 bg-white/5"
+          }`}
+        >
+          I
+        </button>
+        <button
+          onClick={() => setUnderline((v) => !v)}
+          className={`rounded-xl border px-2 py-2 text-sm underline ${
+            underline
+              ? "border-transparent bg-gradient-brand text-primary-foreground"
+              : "border-white/10 bg-white/5"
+          }`}
+        >
+          U
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <button
+          onClick={onCancel}
+          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm"
+        >
+          {t("common.cancel")}
+        </button>
+        <button
+          disabled={!text.trim()}
+          onClick={() =>
+            onConfirm({ text, fontFamily, fontSize, bold, italic, underline })
+          }
+          className="rounded-xl bg-gradient-brand px-3 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+        >
+          {t("common.add")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 

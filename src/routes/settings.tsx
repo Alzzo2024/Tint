@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Heart } from "lucide-react";
+import { ArrowLeft, Heart, Check, ChevronDown } from "lucide-react";
 import { ClientOnly } from "@tanstack/react-router";
-import { useTranslation } from "@/lib/i18n";
+import { useState } from "react";
+import { useTranslation, LANGUAGES } from "@/lib/i18n";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -23,7 +24,9 @@ function SettingsPage() {
 
 function SettingsClient() {
   const { t, i18n } = useTranslation();
-  const lang = i18n.resolvedLanguage ?? "pt-PT";
+  const lang = i18n.resolvedLanguage ?? "en-GB";
+  const [open, setOpen] = useState(false);
+  const current = LANGUAGES.find((l) => l.code === lang) ?? LANGUAGES[7];
 
   return (
     <div className="min-h-screen px-4 pb-24 pt-6 sm:px-6">
@@ -43,17 +46,43 @@ function SettingsClient() {
           <h2 className="text-sm font-semibold text-muted-foreground">
             {t("settings.language")}
           </h2>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <LangBtn
-              active={lang === "pt-PT"}
-              onClick={() => i18n.changeLanguage("pt-PT")}
-              label={t("settings.languagePt")}
-            />
-            <LangBtn
-              active={lang === "en-GB"}
-              onClick={() => i18n.changeLanguage("en-GB")}
-              label={t("settings.languageEn")}
-            />
+          <div className="relative mt-3">
+            <button
+              onClick={() => setOpen((o) => !o)}
+              className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10"
+            >
+              <span className="flex items-center gap-3">
+                <span className="text-xl leading-none">{current.flag}</span>
+                <span className="font-medium">{current.label}</span>
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
+                strokeWidth={2.5}
+              />
+            </button>
+            {open && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#1f1f1f] shadow-2xl">
+                {LANGUAGES.map((l) => {
+                  const active = l.code === lang;
+                  return (
+                    <button
+                      key={l.code}
+                      onClick={() => {
+                        i18n.changeLanguage(l.code);
+                        setOpen(false);
+                      }}
+                      className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition ${
+                        active ? "bg-white/10" : "hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="text-xl leading-none">{l.flag}</span>
+                      <span className="flex-1">{l.label}</span>
+                      {active && <Check className="h-4 w-4" strokeWidth={3} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 
@@ -105,28 +134,5 @@ function SettingsClient() {
         </section>
       </main>
     </div>
-  );
-}
-
-function LangBtn({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-xl border px-3 py-2.5 text-sm transition ${
-        active
-          ? "border-transparent bg-gradient-brand text-primary-foreground"
-          : "border-white/10 bg-white/5 text-foreground hover:bg-white/10"
-      }`}
-    >
-      {label}
-    </button>
   );
 }

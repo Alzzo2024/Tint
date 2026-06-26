@@ -54,6 +54,7 @@ export class TintEngine {
 
   view: ViewTransform = { scale: 1, rotation: 0, tx: 0, ty: 0 };
   flipH = false;
+  flipV = false;
   symmetry: SymmetryMode = "none";
   showGuides = false;
   gridSize = 64;
@@ -365,6 +366,48 @@ export class TintEngine {
     this.flipH = !this.flipH;
     this.notify();
   }
+  flipVertical() {
+    this.flipV = !this.flipV;
+    this.notify();
+  }
+  addText(opts: {
+    x: number;
+    y: number;
+    text: string;
+    color: string;
+    fontFamily: string;
+    fontSize: number;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+  }) {
+    const l = this.activeLayer;
+    if (!l) return;
+    const ctx = l.canvas.getContext("2d")!;
+    const before = ctx.getImageData(0, 0, this.width, this.height);
+    const style = [opts.italic ? "italic" : "", opts.bold ? "700" : "400", `${opts.fontSize}px`, opts.fontFamily]
+      .filter(Boolean)
+      .join(" ");
+    ctx.save();
+    ctx.font = style;
+    ctx.fillStyle = opts.color;
+    ctx.textBaseline = "top";
+    const lines = opts.text.split("\n");
+    let y = opts.y;
+    for (const line of lines) {
+      ctx.fillText(line, opts.x, y);
+      if (opts.underline) {
+        const m = ctx.measureText(line);
+        const uy = y + opts.fontSize * 0.95;
+        ctx.fillRect(opts.x, uy, m.width, Math.max(1, opts.fontSize * 0.06));
+      }
+      y += opts.fontSize * 1.2;
+    }
+    ctx.restore();
+    const after = ctx.getImageData(0, 0, this.width, this.height);
+    this.pushHistory({ layerId: l.id, before, after });
+    this.notify();
+  }
   setSymmetry(mode: SymmetryMode) {
     this.symmetry = mode;
     this.notify();
@@ -433,6 +476,7 @@ export class TintEngine {
     let ux = (dx * cos - dy * sin) / scale;
     let uy = (dx * sin + dy * cos) / scale;
     if (this.flipH) ux = -ux;
+    if (this.flipV) uy = -uy;
     return { x: ux + this.width / 2, y: uy + this.height / 2 };
   }
 
@@ -443,7 +487,10 @@ export class TintEngine {
     ctx.clearRect(0, 0, target.width, target.height);
     ctx.translate(this.view.tx, this.view.ty);
     ctx.rotate(this.view.rotation);
-    ctx.scale(this.view.scale * (this.flipH ? -1 : 1), this.view.scale);
+    ctx.scale(
+      this.view.scale * (this.flipH ? -1 : 1),
+      this.view.scale * (this.flipV ? -1 : 1),
+    );
     ctx.translate(-this.width / 2, -this.height / 2);
 
     // Fundo "papel" branco da tela
@@ -600,8 +647,21 @@ export class TintEngine {
     type: "image/png" | "image/jpeg";
     transparent: boolean;
   }): Promise<Blob> {
-    const c = new OffscreenCanvas(this.width, this.height);
-    const ctx = c.getContext("2d")!;
+    const useOffscreen =
+      typeof OffscreenCanvas !== "undefined" &&
+      typeof (OffscreenCanvas.prototype as { convertToBlob?: unknown })
+        .convertToBlob === "function";
+    const c: OffscreenCanvas | HTMLCanvasElement = useOffscreen
+      ? new OffscreenCanvas(this.width, this.height)
+      : (() => {
+          const el = document.createElement("canvas");
+          el.width = this.width;
+          el.height = this.height;
+          return el;
+        })();
+    const ctx = c.getContext("2d") as
+      | OffscreenCanvasRenderingContext2D
+      | CanvasRenderingContext2D;
     if (!opts.transparent || opts.type === "image/jpeg") {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, this.width, this.height);
@@ -611,9 +671,18 @@ export class TintEngine {
       ctx.globalAlpha = l.opacity;
       ctx.drawImage(l.canvas, 0, 0);
     }
-    return await c.convertToBlob({
-      type: opts.type,
-      quality: opts.type === "image/jpeg" ? 0.92 : undefined,
+    if (useOffscreen) {
+      return await (c as OffscreenCanvas).convertToBlob({
+        type: opts.type,
+        quality: opts.type === "image/jpeg" ? 0.92 : undefined,
+      });
+    }
+    return await new Promise<Blob>((resolve, reject) => {
+      (c as HTMLCanvasElement).toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+        opts.type,
+        opts.type === "image/jpeg" ? 0.92 : undefined,
+      );
     });
   }
 }

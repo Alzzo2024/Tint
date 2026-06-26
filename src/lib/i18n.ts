@@ -1,38 +1,74 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-import { ptPT } from "./locales/pt-PT";
+import { ptPT, type Translation } from "./locales/pt-PT";
 import { enGB } from "./locales/en-GB";
+import { ptBR } from "./locales/pt-BR";
+import { enUS } from "./locales/en-US";
+import { esES } from "./locales/es-ES";
+import { frFR } from "./locales/fr-FR";
+import { frCA } from "./locales/fr-CA";
+import { deDE } from "./locales/de-DE";
+import { itIT } from "./locales/it-IT";
 
 const isBrowser = typeof window !== "undefined";
-const DEFAULT_LANGUAGE = "pt-PT";
-const SUPPORTED_LANGUAGES = ["pt-PT", "en-GB"] as const;
+const DEFAULT_LANGUAGE = "en-GB";
+const SUPPORTED_LANGUAGES = [
+  "pt-PT",
+  "pt-BR",
+  "es-ES",
+  "fr-FR",
+  "fr-CA",
+  "de-DE",
+  "it-IT",
+  "en-GB",
+  "en-US",
+] as const;
 const STORAGE_KEY = "tint:lang";
 
 type Language = (typeof SUPPORTED_LANGUAGES)[number];
-type Dictionary = typeof ptPT;
 
-const dictionaries: Record<Language, Dictionary> = {
+const dictionaries: Record<Language, Translation> = {
   "pt-PT": ptPT,
+  "pt-BR": ptBR,
+  "es-ES": esES,
+  "fr-FR": frFR,
+  "fr-CA": frCA,
+  "de-DE": deDE,
+  "it-IT": itIT,
   "en-GB": enGB,
+  "en-US": enUS,
 };
 
 function isLanguage(value: unknown): value is Language {
   return SUPPORTED_LANGUAGES.includes(value as Language);
 }
 
+function detectFromNavigator(): Language {
+  if (!isBrowser) return DEFAULT_LANGUAGE;
+  const langs = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const raw of langs) {
+    if (!raw) continue;
+    if (isLanguage(raw)) return raw;
+    const lower = raw.toLowerCase();
+    // exact match by lowercase
+    const exact = SUPPORTED_LANGUAGES.find((l) => l.toLowerCase() === lower);
+    if (exact) return exact;
+    // base language match → pick first variant; prefer specific defaults
+    const base = lower.split("-")[0];
+    if (base === "pt") return lower.includes("br") ? "pt-BR" : "pt-PT";
+    if (base === "en") return lower.includes("us") ? "en-US" : "en-GB";
+    if (base === "es") return "es-ES";
+    if (base === "fr") return lower.includes("ca") ? "fr-CA" : "fr-FR";
+    if (base === "de") return "de-DE";
+    if (base === "it") return "it-IT";
+  }
+  return DEFAULT_LANGUAGE;
+}
+
 function getStoredLanguage(): Language {
   if (!isBrowser) return DEFAULT_LANGUAGE;
-
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (isLanguage(stored)) {
-    return stored;
-  }
-
-  const browserLanguage = window.navigator.language;
-  if (browserLanguage === "en-GB" || browserLanguage.startsWith("en")) {
-    return "en-GB";
-  }
-
-  return DEFAULT_LANGUAGE;
+  if (isLanguage(stored)) return stored;
+  return detectFromNavigator();
 }
 
 let currentLanguage: Language = getStoredLanguage();
@@ -50,9 +86,7 @@ function setDocumentLanguage(language: Language) {
 function setLanguage(language: string) {
   const next = isLanguage(language) ? language : DEFAULT_LANGUAGE;
   currentLanguage = next;
-  if (isBrowser) {
-    window.localStorage.setItem(STORAGE_KEY, next);
-  }
+  if (isBrowser) window.localStorage.setItem(STORAGE_KEY, next);
   setDocumentLanguage(next);
   emitLanguageChange();
 }
@@ -71,15 +105,14 @@ function getSnapshot(): Language {
   if (isBrowser) currentLanguage = getStoredLanguage();
   return currentLanguage;
 }
-
 function getServerSnapshot(): Language {
   return DEFAULT_LANGUAGE;
 }
 
-function readPath(dictionary: Dictionary, key: string): string | undefined {
+function readPath(dictionary: unknown, key: string): string | undefined {
   let value: unknown = dictionary;
   for (const part of key.split(".")) {
-    if (!value || typeof value !== "object" || !(part in value)) return undefined;
+    if (!value || typeof value !== "object" || !(part in (value as object))) return undefined;
     value = (value as Record<string, unknown>)[part];
   }
   return typeof value === "string" ? value : undefined;
@@ -98,8 +131,9 @@ export function translate(
   language: Language = currentLanguage,
 ) {
   const translated =
-    readPath(dictionaries[language], key) ?? readPath(dictionaries[DEFAULT_LANGUAGE], key);
-
+    readPath(dictionaries[language], key) ??
+    readPath(dictionaries["en-GB"], key) ??
+    readPath(dictionaries["pt-PT"], key);
   if (!translated) return key.split(".").at(-1) ?? key;
   return interpolate(translated, options);
 }
@@ -121,11 +155,22 @@ export function useTranslation() {
     }),
     [language],
   );
-
   return { t, i18n };
 }
 
 setDocumentLanguage(currentLanguage);
+
+export const LANGUAGES: { code: Language; label: string; flag: string }[] = [
+  { code: "pt-PT", label: "Português", flag: "🇵🇹" },
+  { code: "pt-BR", label: "Português (BR)", flag: "🇧🇷" },
+  { code: "es-ES", label: "Castellano", flag: "🇪🇸" },
+  { code: "fr-FR", label: "Français", flag: "🇫🇷" },
+  { code: "fr-CA", label: "Français (CA)", flag: "🇨🇦" },
+  { code: "de-DE", label: "Deutsch", flag: "🇩🇪" },
+  { code: "it-IT", label: "Italiano", flag: "🇮🇹" },
+  { code: "en-GB", label: "English", flag: "🇬🇧" },
+  { code: "en-US", label: "English (US)", flag: "🇺🇸" },
+];
 
 export default {
   get language() {

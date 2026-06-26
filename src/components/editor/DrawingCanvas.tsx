@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { TintEngine } from "@/lib/drawing/engine";
 import type { BrushSettings } from "@/lib/drawing/brushes";
 
-export type ToolMode = "brush" | "eyedropper" | "fill" | "select";
+export type ToolMode = "brush" | "eyedropper" | "fill" | "select" | "pan" | "text";
 
 interface Props {
   engine: TintEngine;
@@ -13,6 +13,8 @@ interface Props {
   onRedoGesture: () => void;
   /** Após uso single-shot (eyedropper / fill / select concluído), voltar ao pincel. */
   onToolConsumed?: () => void;
+  /** Quando a ferramenta de texto é usada, posição em coordenadas da tela. */
+  onTextAt?: (canvasX: number, canvasY: number) => void;
 }
 
 interface ActivePointer {
@@ -48,6 +50,7 @@ export function DrawingCanvas({
   onUndoGesture,
   onRedoGesture,
   onToolConsumed,
+  onTextAt,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -171,6 +174,26 @@ export function DrawingCanvas({
       engine.setSelection({ x: canvasPt.x, y: canvasPt.y, w: 0, h: 0 });
       return;
     }
+    if (tool === "text") {
+      onTextAt?.(canvasPt.x, canvasPt.y);
+      onToolConsumed?.();
+      return;
+    }
+    if (tool === "pan") {
+      // single-finger pan: register a transform start with imaginary 2nd anchor
+      const g = gestureRef.current;
+      g.kind = "transform";
+      g.startDist = 1;
+      g.startAngle = 0;
+      g.startMidX = x;
+      g.startMidY = y;
+      g.startScale = engine.view.scale;
+      g.startRotation = engine.view.rotation;
+      g.startTx = engine.view.tx;
+      g.startTy = engine.view.ty;
+      return;
+    }
+
 
     drawingIdRef.current = e.pointerId;
     engine.beginStroke();
@@ -203,6 +226,13 @@ export function DrawingCanvas({
 
     if (pointersRef.current.size >= 2) {
       updateTransform();
+      return;
+    }
+    if (tool === "pan" && gestureRef.current.kind === "transform") {
+      const g = gestureRef.current;
+      engine.view.tx = g.startTx + (x - g.startMidX);
+      engine.view.ty = g.startTy + (y - g.startMidY);
+      engine.notify();
       return;
     }
     if (gestureRef.current.kind === "select") {
@@ -323,7 +353,11 @@ export function DrawingCanvas({
         ? "cell"
         : tool === "select"
           ? "crosshair"
-          : "default";
+          : tool === "pan"
+            ? "grab"
+            : tool === "text"
+              ? "text"
+              : "default";
 
   return (
     <div
