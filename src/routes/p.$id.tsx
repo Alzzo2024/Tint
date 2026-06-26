@@ -430,6 +430,66 @@ function Editor() {
           <ExportPanel engine={engine} />
         </Panel>
       )}
+
+      {panel === "tools" && (
+        <Panel onClose={() => setPanel("none")} title={t("editor.more")}>
+          <div className="grid grid-cols-3 gap-2">
+            <ActionTile
+              label={t("editor.undo")}
+              icon={<Undo2 className="h-5 w-5" strokeWidth={2.5} />}
+              onClick={() => engine.undo()}
+              disabled={!engine.canUndo()}
+            />
+            <ActionTile
+              label={t("editor.redo")}
+              icon={<Redo2 className="h-5 w-5" strokeWidth={2.5} />}
+              onClick={() => engine.redo()}
+              disabled={!engine.canRedo()}
+            />
+            <ActionTile
+              label={t("editor.resetView")}
+              icon={<Crosshair className="h-5 w-5" strokeWidth={2.5} />}
+              onClick={() => {
+                const r = document.querySelector("canvas")!.getBoundingClientRect();
+                engine.resetView(r.width, r.height);
+              }}
+            />
+            <ActionTile
+              label={t("editor.flipH")}
+              icon={<FlipHorizontal className="h-5 w-5" strokeWidth={2.5} />}
+              active={engine.flipH}
+              onClick={() => engine.flipHorizontal()}
+            />
+            <ActionTile
+              label={t("editor.flipV")}
+              icon={<FlipVertical className="h-5 w-5" strokeWidth={2.5} />}
+              active={engine.flipV}
+              onClick={() => engine.flipVertical()}
+            />
+            <ActionTile
+              label={t("editor.more")}
+              icon={<Wand2 className="h-5 w-5" strokeWidth={2.5} />}
+              active={engine.symmetry !== "none" || engine.showGuides}
+              onClick={() => setPanel("more")}
+            />
+          </div>
+        </Panel>
+      )}
+
+      {panel === "text" && textPending && (
+        <Panel onClose={() => { setPanel("none"); setTextPending(null); }} title={t("text.title")}>
+          <TextPanel
+            color={brush.color}
+            onCancel={() => { setPanel("none"); setTextPending(null); }}
+            onConfirm={(opts) => {
+              engine.addText({ x: textPending.x, y: textPending.y, color: brush.color, ...opts });
+              setPanel("none");
+              setTextPending(null);
+            }}
+          />
+        </Panel>
+      )}
+
     </div>
   );
 }
