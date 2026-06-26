@@ -353,7 +353,11 @@ export function DrawingCanvas({
         ? "cell"
         : tool === "select"
           ? "crosshair"
-          : "default";
+          : tool === "pan"
+            ? "grab"
+            : tool === "text"
+              ? "text"
+              : "default";
 
   return (
     <div
