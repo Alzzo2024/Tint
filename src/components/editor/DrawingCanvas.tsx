@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { TintEngine } from "@/lib/drawing/engine";
 import type { BrushSettings } from "@/lib/drawing/brushes";
 
-export type ToolMode = "brush" | "eyedropper" | "fill" | "select";
+export type ToolMode = "brush" | "eyedropper" | "fill" | "select" | "pan" | "text";
 
 interface Props {
   engine: TintEngine;
