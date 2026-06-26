@@ -181,14 +181,16 @@ function Editor() {
       <DrawingCanvas
         engine={engine}
         brush={brush}
-        eyedropper={eyedropper}
+        tool={tool}
         onPickColor={(c) => {
           setColor(c);
-          setEyedropper(false);
+          setTool("brush");
         }}
+        onToolConsumed={() => setTool("brush")}
         onUndoGesture={() => engine.undo()}
         onRedoGesture={() => engine.redo()}
       />
+
 
       {/* Top bar */}
       {!fullscreen && (
@@ -245,6 +247,13 @@ function Editor() {
               <FlipHorizontal className="h-5 w-5" strokeWidth={2.5} />
             </IconBtn>
             <IconBtn
+              label={t("editor.more")}
+              onClick={() => setPanel(panel === "more" ? "none" : "more")}
+              active={panel === "more" || engine.symmetry !== "none" || engine.showGuides}
+            >
+              <Wand2 className="h-5 w-5" strokeWidth={2.5} />
+            </IconBtn>
+            <IconBtn
               label={t("editor.fullscreen")}
               onClick={() => setFullscreen(true)}
             >
@@ -253,6 +262,7 @@ function Editor() {
           </div>
         </header>
       )}
+
 
       {/* Fullscreen exit */}
       {fullscreen && (
@@ -306,11 +316,32 @@ function Editor() {
               style={{ background: brush.color, border: "2px solid rgba(255,255,255,0.15)" }}
             />
             <ToolBtn
-              active={eyedropper}
-              onClick={() => setEyedropper((v) => !v)}
+              active={tool === "eyedropper"}
+              onClick={() => setTool(tool === "eyedropper" ? "brush" : "eyedropper")}
               label={t("tools.eyedropper")}
             >
               <Pipette className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "fill"}
+              onClick={() => setTool(tool === "fill" ? "brush" : "fill")}
+              label={t("tools.fill")}
+            >
+              <PaintBucket className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "select"}
+              onClick={() => {
+                if (tool === "select") {
+                  setTool("brush");
+                  engine.setSelection(null);
+                } else {
+                  setTool("select");
+                }
+              }}
+              label={t("tools.select")}
+            >
+              <SquareDashed className="h-5 w-5" strokeWidth={2.5} />
             </ToolBtn>
             <ToolBtn
               active={panel === "layers"}
@@ -329,6 +360,7 @@ function Editor() {
           </div>
         </div>
       )}
+
 
       {/* Panels */}
       {panel === "brush" && (
