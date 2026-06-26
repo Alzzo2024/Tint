@@ -476,6 +476,7 @@ export class TintEngine {
     let ux = (dx * cos - dy * sin) / scale;
     let uy = (dx * sin + dy * cos) / scale;
     if (this.flipH) ux = -ux;
+    if (this.flipV) uy = -uy;
     return { x: ux + this.width / 2, y: uy + this.height / 2 };
   }
 
@@ -486,7 +487,10 @@ export class TintEngine {
     ctx.clearRect(0, 0, target.width, target.height);
     ctx.translate(this.view.tx, this.view.ty);
     ctx.rotate(this.view.rotation);
-    ctx.scale(this.view.scale * (this.flipH ? -1 : 1), this.view.scale);
+    ctx.scale(
+      this.view.scale * (this.flipH ? -1 : 1),
+      this.view.scale * (this.flipV ? -1 : 1),
+    );
     ctx.translate(-this.width / 2, -this.height / 2);
 
     // Fundo "papel" branco da tela
