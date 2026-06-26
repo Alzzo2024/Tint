@@ -228,6 +228,13 @@ export function DrawingCanvas({
       updateTransform();
       return;
     }
+    if (tool === "pan" && gestureRef.current.kind === "transform") {
+      const g = gestureRef.current;
+      engine.view.tx = g.startTx + (x - g.startMidX);
+      engine.view.ty = g.startTy + (y - g.startMidY);
+      engine.notify();
+      return;
+    }
     if (gestureRef.current.kind === "select") {
       const cur = engine.screenToCanvas(x, y);
       const g = gestureRef.current;
