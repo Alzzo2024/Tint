@@ -108,6 +108,6 @@ export const ptPT = {
     delete: "Apagar",
     confirm: "Confirmar",
   },
-} as const;
+};
 
 export type Translation = typeof ptPT;
