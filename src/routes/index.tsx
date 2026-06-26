@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useState } from "react";
 import { ClientOnly } from "@tanstack/react-router";
 import {
@@ -19,6 +18,7 @@ import {
   renameProject,
   PRESETS,
 } from "@/lib/projects";
+import { useTranslation } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
