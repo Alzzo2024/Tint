@@ -269,6 +269,13 @@ function Editor() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-3">
           <div className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1.5">
             <ToolBtn
+              active={panel === "tools"}
+              onClick={() => setPanel(panel === "tools" ? "none" : "tools")}
+              label={t("editor.more")}
+            >
+              <Plus className="h-5 w-5" strokeWidth={2.75} />
+            </ToolBtn>
+            <ToolBtn
               active={panel === "brush"}
               onClick={() => setPanel(panel === "brush" ? "none" : "brush")}
               label={t("editor.brush")}
@@ -294,6 +301,20 @@ function Editor() {
               label={t("tools.fill")}
             >
               <PaintBucket className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "pan"}
+              onClick={() => setTool(tool === "pan" ? "brush" : "pan")}
+              label={t("tools.pan")}
+            >
+              <Hand className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "text"}
+              onClick={() => setTool(tool === "text" ? "brush" : "text")}
+              label={t("tools.text")}
+            >
+              <Type className="h-5 w-5" strokeWidth={2.5} />
             </ToolBtn>
             <ToolBtn
               active={tool === "select"}
@@ -324,6 +345,7 @@ function Editor() {
               <Download className="h-5 w-5" strokeWidth={2.5} />
             </ToolBtn>
           </div>
+
         </div>
       )}
 
