@@ -7,7 +7,6 @@ import {
   Undo2,
   Redo2,
   Layers as LayersIcon,
-  Palette,
   Pipette,
   Maximize2,
   Minimize2,
@@ -30,12 +29,17 @@ import {
   Brush,
   X,
   Check,
+  PaintBucket,
+  SquareDashed,
+  Grid3x3,
+  Wand2,
 } from "lucide-react";
-import { TintEngine } from "@/lib/drawing/engine";
+import { TintEngine, type SymmetryMode } from "@/lib/drawing/engine";
 import type { BrushKind, BrushSettings } from "@/lib/drawing/brushes";
-import { DrawingCanvas } from "@/components/editor/DrawingCanvas";
+import { DrawingCanvas, type ToolMode } from "@/components/editor/DrawingCanvas";
 import { ColorWheel } from "@/components/editor/ColorWheel";
 import { kvGet, kvSet } from "@/lib/db";
+
 
 export const Route = createFileRoute("/p/$id")({
   head: () => ({
@@ -74,10 +78,11 @@ function Editor() {
     opacity: 1,
     stabilizer: 0.3,
   });
-  const [eyedropper, setEyedropper] = useState(false);
-  const [panel, setPanel] = useState<"none" | "brush" | "color" | "layers" | "export">(
+  const [tool, setTool] = useState<ToolMode>("brush");
+  const [panel, setPanel] = useState<"none" | "brush" | "color" | "layers" | "export" | "more">(
     "none",
   );
+
   const [fullscreen, setFullscreen] = useState(false);
   const [recentColors, setRecentColors] = useState<string[]>([
     "#1a1a1a",
