@@ -141,6 +141,7 @@ export const ptPT = {
     close: "Fechar",
     delete: "Apagar",
     confirm: "Confirmar",
+    add: "Adicionar",
   },
 };
 
