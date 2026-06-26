@@ -1,6 +1,17 @@
 import { nanoid } from "nanoid";
 import { db, type LayerRow } from "../db";
 import { renderStrokeSegment, type BrushKind, type BrushSettings } from "./brushes";
+import { floodFill } from "./fill";
+
+export type SymmetryMode = "none" | "horizontal" | "vertical" | "both";
+
+export interface Selection {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 
 /**
  * In-memory state for an opened project. Layers live as OffscreenCanvas; we
@@ -43,6 +54,10 @@ export class TintEngine {
 
   view: ViewTransform = { scale: 1, rotation: 0, tx: 0, ty: 0 };
   flipH = false;
+  symmetry: SymmetryMode = "none";
+  showGuides = false;
+  gridSize = 64;
+  selection: Selection | null = null;
 
   private history: HistoryEntry[] = [];
   private future: HistoryEntry[] = [];
