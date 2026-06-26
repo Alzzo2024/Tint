@@ -16,7 +16,7 @@ import {
   Download,
   Pencil,
   PenLine,
-  Spray,
+  SprayCan,
   Highlighter,
   Eraser,
   Plus,
@@ -55,7 +55,7 @@ function EditorPage() {
 const BRUSH_KINDS: { kind: BrushKind; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; nameKey: string }[] = [
   { kind: "pencil", icon: Pencil, nameKey: "tools.pencil" },
   { kind: "pen", icon: PenLine, nameKey: "tools.pen" },
-  { kind: "airbrush", icon: Spray, nameKey: "tools.airbrush" },
+  { kind: "airbrush", icon: SprayCan, nameKey: "tools.airbrush" },
   { kind: "marker", icon: Highlighter, nameKey: "tools.marker" },
   { kind: "eraser", icon: Eraser, nameKey: "tools.eraser" },
 ];
@@ -473,13 +473,13 @@ function VerticalSlider({
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
         className="tint-slider h-32"
-        style={{
-          writingMode: "vertical-lr" as React.CSSProperties["writingMode"],
-          // @ts-expect-error CSS prop
-          "-webkit-appearance": "slider-vertical",
-          appearance: "slider-vertical",
-          width: 24,
-        }}
+        style={
+          {
+            writingMode: "vertical-lr",
+            WebkitAppearance: "slider-vertical",
+            width: 24,
+          } as React.CSSProperties
+        }
       />
       <span className="text-[10px] text-muted-foreground">
         {Math.round(value)}
