@@ -782,13 +782,21 @@ function ExportPanel({ engine }: { engine: TintEngine }) {
   const [transparent, setTransparent] = useState(false);
 
   async function exportAs(type: "image/png" | "image/jpeg") {
-    const blob = await engine.exportImage({ type, transparent });
+    // JPEG não suporta transparência: força fundo se necessário.
+    const useTransparent = type === "image/png" && transparent;
+    const blob = await engine.exportImage({ type, transparent: useTransparent });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `tint-${Date.now()}.${type === "image/png" ? "png" : "jpg"}`;
+    a.rel = "noopener";
+    a.target = "_blank";
+    document.body.appendChild(a);
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 1500);
   }
 
   return (
