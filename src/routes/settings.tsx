@@ -91,10 +91,10 @@ function SettingsClient() {
           </h2>
           <p className="mt-3 text-sm text-muted-foreground">
             Tint v0.1.0 — feito com{" "}
-            <Heart className="inline h-3.5 w-3.5 text-pink-400" /> em Lovable.
+            <Heart className="inline h-3.5 w-3.5 text-pink-400" />.
           </p>
           <a
-            href="https://github.com/sponsors"
+            href="https://revolut.me/simaoa_cz_ytr4"
             target="_blank"
             rel="noreferrer"
             className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-4 py-3 text-sm font-semibold text-primary-foreground"
