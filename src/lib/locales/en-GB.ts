@@ -74,6 +74,7 @@ export const enGB: Translation = {
     body: "Add Tint to your home screen for quick, fullscreen access.",
     cta: "Install app",
     later: "Later",
+  },
   tools: {
     pencil: "Pencil",
     pen: "Pen",

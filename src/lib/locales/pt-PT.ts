@@ -72,6 +72,7 @@ export const ptPT = {
     body: "Adiciona o Tint ao ecrã principal para uso rápido em ecrã inteiro.",
     cta: "Instalar app",
     later: "Mais tarde",
+  },
   tools: {
     pencil: "Lápis",
     pen: "Caneta",
