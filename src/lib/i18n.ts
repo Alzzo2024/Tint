@@ -35,7 +35,7 @@ function getStoredLanguage(): Language {
   return DEFAULT_LANGUAGE;
 }
 
-let currentLanguage = getStoredLanguage();
+let currentLanguage: Language = getStoredLanguage();
 
 function emitLanguageChange() {
   if (!isBrowser) return;
@@ -67,12 +67,12 @@ function subscribe(onStoreChange: () => void) {
   };
 }
 
-function getSnapshot() {
+function getSnapshot(): Language {
   if (isBrowser) currentLanguage = getStoredLanguage();
   return currentLanguage;
 }
 
-function getServerSnapshot() {
+function getServerSnapshot(): Language {
   return DEFAULT_LANGUAGE;
 }
 
@@ -105,7 +105,7 @@ export function translate(
 }
 
 export function useTranslation() {
-  const language = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const language = useSyncExternalStore<Language>(subscribe, getSnapshot, getServerSnapshot);
   const t = useCallback(
     (key: string, options?: Record<string, string | number>) => translate(key, options, language),
     [language],
