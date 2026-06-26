@@ -11,7 +11,7 @@ export type PresetId = (typeof PRESETS)[number]["id"];
 
 async function emptyLayerBlob(width: number, height: number): Promise<Blob> {
   const c = new OffscreenCanvas(width, height);
-  // Camada vazia (transparente)
+  c.getContext("2d"); // criar contexto antes do convertToBlob
   return await c.convertToBlob({ type: "image/png" });
 }
 
