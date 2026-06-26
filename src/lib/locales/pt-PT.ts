@@ -146,9 +146,10 @@ export const ptPT = {
 };
 
 type Base = typeof ptPT;
-export type Translation = Omit<Base, "editor" | "tools" | "text"> & {
+export type Translation = Omit<Base, "editor" | "tools" | "text" | "common"> & {
   editor: Omit<Base["editor"], "flipV" | "tools"> & { flipV?: string; tools?: string };
   tools: Omit<Base["tools"], "pan" | "text"> & { pan?: string; text?: string };
   text?: Base["text"];
+  common: Omit<Base["common"], "add"> & { add?: string };
 };
 
