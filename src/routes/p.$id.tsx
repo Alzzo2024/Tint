@@ -934,3 +934,168 @@ function MorePanel({
   );
 }
 
+function ActionTile({
+  label,
+  icon,
+  onClick,
+  active,
+  disabled,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border px-3 py-3 text-xs transition disabled:opacity-40 ${
+        active
+          ? "border-transparent bg-gradient-brand text-primary-foreground"
+          : "border-white/10 bg-white/5 hover:bg-white/10"
+      }`}
+    >
+      {icon}
+      <span className="text-center leading-tight">{label}</span>
+    </button>
+  );
+}
+
+const TEXT_FONTS = [
+  { id: "ui-sans-serif, system-ui, sans-serif", label: "Sans" },
+  { id: "ui-serif, Georgia, serif", label: "Serif" },
+  { id: "ui-monospace, SFMono-Regular, Menlo, monospace", label: "Mono" },
+  { id: '"Comic Sans MS", "Comic Sans", cursive', label: "Comic" },
+  { id: '"Times New Roman", Times, serif', label: "Times" },
+];
+
+function TextPanel({
+  color,
+  onConfirm,
+  onCancel,
+}: {
+  color: string;
+  onConfirm: (opts: {
+    text: string;
+    fontFamily: string;
+    fontSize: number;
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+  }) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [text, setText] = useState("");
+  const [fontFamily, setFontFamily] = useState(TEXT_FONTS[0].id);
+  const [fontSize, setFontSize] = useState(48);
+  const [bold, setBold] = useState(false);
+  const [italic, setItalic] = useState(false);
+  const [underline, setUnderline] = useState(false);
+
+  return (
+    <div className="space-y-3">
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={t("text.placeholder")}
+        className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-white/30"
+        rows={3}
+        style={{
+          fontFamily,
+          fontWeight: bold ? 700 : 400,
+          fontStyle: italic ? "italic" : "normal",
+          textDecoration: underline ? "underline" : "none",
+          color,
+        }}
+      />
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">{t("text.font")}</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {TEXT_FONTS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFontFamily(f.id)}
+              style={{ fontFamily: f.id }}
+              className={`rounded-xl border px-2 py-2 text-xs ${
+                fontFamily === f.id
+                  ? "border-transparent bg-gradient-brand text-primary-foreground"
+                  : "border-white/10 bg-white/5 hover:bg-white/10"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="mb-1.5 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">{t("text.size")}</span>
+          <span className="tabular-nums">{fontSize}px</span>
+        </div>
+        <input
+          type="range"
+          min={8}
+          max={200}
+          value={fontSize}
+          onChange={(e) => setFontSize(Number(e.target.value))}
+          className="w-full accent-[#ca8fff]"
+        />
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        <button
+          onClick={() => setBold((v) => !v)}
+          className={`rounded-xl border px-2 py-2 text-sm font-bold ${
+            bold
+              ? "border-transparent bg-gradient-brand text-primary-foreground"
+              : "border-white/10 bg-white/5"
+          }`}
+        >
+          B
+        </button>
+        <button
+          onClick={() => setItalic((v) => !v)}
+          className={`rounded-xl border px-2 py-2 text-sm italic ${
+            italic
+              ? "border-transparent bg-gradient-brand text-primary-foreground"
+              : "border-white/10 bg-white/5"
+          }`}
+        >
+          I
+        </button>
+        <button
+          onClick={() => setUnderline((v) => !v)}
+          className={`rounded-xl border px-2 py-2 text-sm underline ${
+            underline
+              ? "border-transparent bg-gradient-brand text-primary-foreground"
+              : "border-white/10 bg-white/5"
+          }`}
+        >
+          U
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <button
+          onClick={onCancel}
+          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm"
+        >
+          {t("common.cancel")}
+        </button>
+        <button
+          disabled={!text.trim()}
+          onClick={() =>
+            onConfirm({ text, fontFamily, fontSize, bold, italic, underline })
+          }
+          className="rounded-xl bg-gradient-brand px-3 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+        >
+          {t("common.add")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
