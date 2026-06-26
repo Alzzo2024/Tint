@@ -292,15 +292,42 @@ export class TintEngine {
       py = this.lastPoint.y + (y - this.lastPoint.y) * t;
     }
     const point = { x: px, y: py, p: pressure };
-    if (this.lastPoint) {
-      renderStrokeSegment(l.canvas, this.lastPoint, point, brush);
-    } else {
-      renderStrokeSegment(l.canvas, point, point, brush);
+    const prev = this.lastPoint ?? point;
+    // ponto base
+    renderStrokeSegment(l.canvas, prev, point, brush);
+    // espelhos de simetria
+    if (this.symmetry !== "none") {
+      const mirrors = this.mirrorPoints(prev, point);
+      for (const [a, b] of mirrors) {
+        renderStrokeSegment(l.canvas, a, b, brush);
+      }
     }
     this.lastPoint = point;
     this.smoothedPoints.push(point);
     this.notify();
   }
+
+  private mirrorPoints(
+    a: { x: number; y: number; p: number },
+    b: { x: number; y: number; p: number },
+  ): Array<[typeof a, typeof b]> {
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const out: Array<[typeof a, typeof b]> = [];
+    const mirrorX = (p: typeof a) => ({ x: 2 * cx - p.x, y: p.y, p: p.p });
+    const mirrorY = (p: typeof a) => ({ x: p.x, y: 2 * cy - p.y, p: p.p });
+    if (this.symmetry === "horizontal" || this.symmetry === "both") {
+      out.push([mirrorX(a), mirrorX(b)]);
+    }
+    if (this.symmetry === "vertical" || this.symmetry === "both") {
+      out.push([mirrorY(a), mirrorY(b)]);
+    }
+    if (this.symmetry === "both") {
+      out.push([mirrorX(mirrorY(a)), mirrorX(mirrorY(b))]);
+    }
+    return out;
+  }
+
 
   endStroke() {
     const l = this.activeLayer;
