@@ -51,6 +51,7 @@ function GalleryClient() {
   );
   const [newOpen, setNewOpen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   return (
@@ -114,6 +115,7 @@ function GalleryClient() {
                   setRenaming(p.id);
                   setRenameValue(p.name);
                 }}
+                onDelete={() => setDeleting(p.id)}
               />
             ))}
           </div>
@@ -134,6 +136,19 @@ function GalleryClient() {
           }}
         />
       )}
+      {deleting && (
+        <ConfirmDialog
+          title={t("gallery.delete")}
+          body={t("gallery.deleteConfirm")}
+          confirmLabel={t("common.delete")}
+          danger
+          onCancel={() => setDeleting(null)}
+          onConfirm={async () => {
+            await deleteProject(deleting);
+            setDeleting(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -145,6 +160,7 @@ function ProjectCard({
   height,
   thumbnail,
   onRename,
+  onDelete,
 }: {
   id: string;
   name: string;
@@ -152,6 +168,7 @@ function ProjectCard({
   height: number;
   thumbnail?: Blob;
   onRename: () => void;
+  onDelete: () => void;
 }) {
   const { t } = useTranslation();
   const [menu, setMenu] = useState(false);
@@ -223,11 +240,9 @@ function ProjectCard({
             danger
             icon={<Trash2 className="h-4 w-4" strokeWidth={2.5} />}
             label={t("gallery.delete")}
-            onClick={async () => {
+            onClick={() => {
               setMenu(false);
-              if (confirm(t("gallery.deleteConfirm"))) {
-                await deleteProject(id);
-              }
+              onDelete();
             }}
           />
         </div>
@@ -427,6 +442,56 @@ function RenameDialog({
             className="rounded-full bg-gradient-brand px-5 py-2 text-sm font-semibold text-primary-foreground"
           >
             {t("common.save")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  danger,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  danger?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="glass-strong w-full max-w-sm rounded-3xl p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-semibold">{title}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`rounded-full px-5 py-2 text-sm font-semibold ${
+              danger
+                ? "bg-destructive text-destructive-foreground"
+                : "bg-gradient-brand text-primary-foreground"
+            }`}
+          >
+            {confirmLabel}
           </button>
         </div>
       </div>
