@@ -647,8 +647,21 @@ export class TintEngine {
     type: "image/png" | "image/jpeg";
     transparent: boolean;
   }): Promise<Blob> {
-    const c = new OffscreenCanvas(this.width, this.height);
-    const ctx = c.getContext("2d")!;
+    const useOffscreen =
+      typeof OffscreenCanvas !== "undefined" &&
+      typeof (OffscreenCanvas.prototype as { convertToBlob?: unknown })
+        .convertToBlob === "function";
+    const c: OffscreenCanvas | HTMLCanvasElement = useOffscreen
+      ? new OffscreenCanvas(this.width, this.height)
+      : (() => {
+          const el = document.createElement("canvas");
+          el.width = this.width;
+          el.height = this.height;
+          return el;
+        })();
+    const ctx = c.getContext("2d") as
+      | OffscreenCanvasRenderingContext2D
+      | CanvasRenderingContext2D;
     if (!opts.transparent || opts.type === "image/jpeg") {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, this.width, this.height);
@@ -658,9 +671,18 @@ export class TintEngine {
       ctx.globalAlpha = l.opacity;
       ctx.drawImage(l.canvas, 0, 0);
     }
-    return await c.convertToBlob({
-      type: opts.type,
-      quality: opts.type === "image/jpeg" ? 0.92 : undefined,
+    if (useOffscreen) {
+      return await (c as OffscreenCanvas).convertToBlob({
+        type: opts.type,
+        quality: opts.type === "image/jpeg" ? 0.92 : undefined,
+      });
+    }
+    return await new Promise<Blob>((resolve, reject) => {
+      (c as HTMLCanvasElement).toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+        opts.type,
+        opts.type === "image/jpeg" ? 0.92 : undefined,
+      );
     });
   }
 }
