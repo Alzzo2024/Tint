@@ -147,6 +147,7 @@ function ProjectCard({
   height,
   thumbnail,
   onRename,
+  onDelete,
 }: {
   id: string;
   name: string;
@@ -154,6 +155,7 @@ function ProjectCard({
   height: number;
   thumbnail?: Blob;
   onRename: () => void;
+  onDelete: () => void;
 }) {
   const { t } = useTranslation();
   const [menu, setMenu] = useState(false);
