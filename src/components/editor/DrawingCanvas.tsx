@@ -174,6 +174,26 @@ export function DrawingCanvas({
       engine.setSelection({ x: canvasPt.x, y: canvasPt.y, w: 0, h: 0 });
       return;
     }
+    if (tool === "text") {
+      onTextAt?.(canvasPt.x, canvasPt.y);
+      onToolConsumed?.();
+      return;
+    }
+    if (tool === "pan") {
+      // single-finger pan: register a transform start with imaginary 2nd anchor
+      const g = gestureRef.current;
+      g.kind = "transform";
+      g.startDist = 1;
+      g.startAngle = 0;
+      g.startMidX = x;
+      g.startMidY = y;
+      g.startScale = engine.view.scale;
+      g.startRotation = engine.view.rotation;
+      g.startTx = engine.view.tx;
+      g.startTy = engine.view.ty;
+      return;
+    }
+
 
     drawingIdRef.current = e.pointerId;
     engine.beginStroke();
