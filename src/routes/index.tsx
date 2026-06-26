@@ -51,6 +51,7 @@ function GalleryClient() {
   );
   const [newOpen, setNewOpen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   return (
