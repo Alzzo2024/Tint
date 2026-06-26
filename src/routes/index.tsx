@@ -136,6 +136,19 @@ function GalleryClient() {
           }}
         />
       )}
+      {deleting && (
+        <ConfirmDialog
+          title={t("gallery.delete")}
+          body={t("gallery.deleteConfirm")}
+          confirmLabel={t("common.delete")}
+          danger
+          onCancel={() => setDeleting(null)}
+          onConfirm={async () => {
+            await deleteProject(deleting);
+            setDeleting(null);
+          }}
+        />
+      )}
     </div>
   );
 }
