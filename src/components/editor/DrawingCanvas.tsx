@@ -13,6 +13,8 @@ interface Props {
   onRedoGesture: () => void;
   /** Após uso single-shot (eyedropper / fill / select concluído), voltar ao pincel. */
   onToolConsumed?: () => void;
+  /** Quando a ferramenta de texto é usada, posição em coordenadas da tela. */
+  onTextAt?: (canvasX: number, canvasY: number) => void;
 }
 
 interface ActivePointer {
@@ -48,6 +50,7 @@ export function DrawingCanvas({
   onUndoGesture,
   onRedoGesture,
   onToolConsumed,
+  onTextAt,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
