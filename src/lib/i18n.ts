@@ -4,24 +4,28 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import { ptPT } from "./locales/pt-PT";
 import { enGB } from "./locales/en-GB";
 
+const isBrowser = typeof window !== "undefined";
+
 if (!i18n.isInitialized) {
-  i18n
-    .use(LanguageDetector)
-    .use(initReactI18next)
-    .init({
-      resources: {
-        "pt-PT": { translation: ptPT },
-        "en-GB": { translation: enGB },
-      },
-      fallbackLng: "pt-PT",
-      supportedLngs: ["pt-PT", "en-GB"],
-      interpolation: { escapeValue: false },
-      detection: {
-        order: ["localStorage", "navigator"],
-        lookupLocalStorage: "tint:lang",
-        caches: ["localStorage"],
-      },
-    });
+  const chain = i18n.use(initReactI18next);
+  if (isBrowser) chain.use(LanguageDetector);
+  chain.init({
+    resources: {
+      "pt-PT": { translation: ptPT },
+      "en-GB": { translation: enGB },
+    },
+    lng: isBrowser ? undefined : "pt-PT",
+    fallbackLng: "pt-PT",
+    supportedLngs: ["pt-PT", "en-GB"],
+    interpolation: { escapeValue: false },
+    initImmediate: false,
+    react: { useSuspense: false },
+    detection: {
+      order: ["localStorage", "navigator"],
+      lookupLocalStorage: "tint:lang",
+      caches: ["localStorage"],
+    },
+  });
 }
 
 export default i18n;
