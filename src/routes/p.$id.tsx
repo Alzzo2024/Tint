@@ -191,12 +191,15 @@ function Editor() {
           setTool("brush");
         }}
         onToolConsumed={() => setTool("brush")}
+        onTextAt={(x, y) => {
+          setTextPending({ x, y });
+          setPanel("text");
+        }}
         onUndoGesture={() => engine.undo()}
         onRedoGesture={() => engine.redo()}
       />
 
-
-      {/* Top bar */}
+      {/* Top bar — apenas voltar + estado */}
       {!fullscreen && (
         <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between p-3">
           <div className="pointer-events-auto flex items-center gap-2">
@@ -218,54 +221,13 @@ function Editor() {
             </div>
           </div>
           <div className="pointer-events-auto flex items-center gap-2">
-            <IconBtn
-              label={t("editor.undo")}
-              onClick={() => engine.undo()}
-              disabled={!engine.canUndo()}
-            >
-              <Undo2 className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.redo")}
-              onClick={() => engine.redo()}
-              disabled={!engine.canRedo()}
-            >
-              <Redo2 className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.resetView")}
-              onClick={() => {
-                const r = document
-                  .querySelector("canvas")!
-                  .getBoundingClientRect();
-                engine.resetView(r.width, r.height);
-              }}
-            >
-              <Crosshair className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.flipH")}
-              onClick={() => engine.flipHorizontal()}
-              active={engine.flipH}
-            >
-              <FlipHorizontal className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.more")}
-              onClick={() => setPanel(panel === "more" ? "none" : "more")}
-              active={panel === "more" || engine.symmetry !== "none" || engine.showGuides}
-            >
-              <Wand2 className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
-            <IconBtn
-              label={t("editor.fullscreen")}
-              onClick={() => setFullscreen(true)}
-            >
+            <IconBtn label={t("editor.fullscreen")} onClick={() => setFullscreen(true)}>
               <Maximize2 className="h-5 w-5" strokeWidth={2.5} />
             </IconBtn>
           </div>
         </header>
       )}
+
 
 
       {/* Fullscreen exit */}
