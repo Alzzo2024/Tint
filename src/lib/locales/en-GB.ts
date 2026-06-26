@@ -119,7 +119,7 @@ export const enGB: Translation = {
     pressureSupport: "Stylus pressure support",
     palmRejection: "Palm rejection",
     about: "About",
-    supportDev: "Support the developer",
+    supportDev: "Support the project",
     version: "Version",
   },
   common: {

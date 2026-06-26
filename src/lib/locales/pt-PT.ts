@@ -117,7 +117,7 @@ export const ptPT = {
     pressureSupport: "Suporte de pressão de stylus",
     palmRejection: "Rejeição de palma",
     about: "Sobre",
-    supportDev: "Apoiar o programador",
+    supportDev: "Apoiar o projecto",
     version: "Versão",
   },
   common: {
