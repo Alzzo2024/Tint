@@ -1,6 +1,17 @@
 import { nanoid } from "nanoid";
 import { db, type LayerRow } from "../db";
 import { renderStrokeSegment, type BrushKind, type BrushSettings } from "./brushes";
+import { floodFill } from "./fill";
+
+export type SymmetryMode = "none" | "horizontal" | "vertical" | "both";
+
+export interface Selection {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 
 /**
  * In-memory state for an opened project. Layers live as OffscreenCanvas; we
@@ -43,6 +54,10 @@ export class TintEngine {
 
   view: ViewTransform = { scale: 1, rotation: 0, tx: 0, ty: 0 };
   flipH = false;
+  symmetry: SymmetryMode = "none";
+  showGuides = false;
+  gridSize = 64;
+  selection: Selection | null = null;
 
   private history: HistoryEntry[] = [];
   private future: HistoryEntry[] = [];
@@ -277,15 +292,42 @@ export class TintEngine {
       py = this.lastPoint.y + (y - this.lastPoint.y) * t;
     }
     const point = { x: px, y: py, p: pressure };
-    if (this.lastPoint) {
-      renderStrokeSegment(l.canvas, this.lastPoint, point, brush);
-    } else {
-      renderStrokeSegment(l.canvas, point, point, brush);
+    const prev = this.lastPoint ?? point;
+    // ponto base
+    renderStrokeSegment(l.canvas, prev, point, brush);
+    // espelhos de simetria
+    if (this.symmetry !== "none") {
+      const mirrors = this.mirrorPoints(prev, point);
+      for (const [a, b] of mirrors) {
+        renderStrokeSegment(l.canvas, a, b, brush);
+      }
     }
     this.lastPoint = point;
     this.smoothedPoints.push(point);
     this.notify();
   }
+
+  private mirrorPoints(
+    a: { x: number; y: number; p: number },
+    b: { x: number; y: number; p: number },
+  ): Array<[typeof a, typeof b]> {
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const out: Array<[typeof a, typeof b]> = [];
+    const mirrorX = (p: typeof a) => ({ x: 2 * cx - p.x, y: p.y, p: p.p });
+    const mirrorY = (p: typeof a) => ({ x: p.x, y: 2 * cy - p.y, p: p.p });
+    if (this.symmetry === "horizontal" || this.symmetry === "both") {
+      out.push([mirrorX(a), mirrorX(b)]);
+    }
+    if (this.symmetry === "vertical" || this.symmetry === "both") {
+      out.push([mirrorY(a), mirrorY(b)]);
+    }
+    if (this.symmetry === "both") {
+      out.push([mirrorX(mirrorY(a)), mirrorX(mirrorY(b))]);
+    }
+    return out;
+  }
+
 
   endStroke() {
     const l = this.activeLayer;
@@ -323,6 +365,63 @@ export class TintEngine {
     this.flipH = !this.flipH;
     this.notify();
   }
+  setSymmetry(mode: SymmetryMode) {
+    this.symmetry = mode;
+    this.notify();
+  }
+  toggleGuides() {
+    this.showGuides = !this.showGuides;
+    this.notify();
+  }
+
+  // ---- Fill / Selection ----
+  fillAt(x: number, y: number, hex: string, tolerance = 24) {
+    const l = this.activeLayer;
+    if (!l) return;
+    const ctx = l.canvas.getContext("2d")!;
+    const before = ctx.getImageData(0, 0, this.width, this.height);
+    floodFill(l.canvas, x, y, hex, tolerance);
+    const after = ctx.getImageData(0, 0, this.width, this.height);
+    this.pushHistory({ layerId: l.id, before, after });
+    this.notify();
+  }
+  setSelection(sel: Selection | null) {
+    if (sel) {
+      const x = Math.max(0, Math.min(this.width, Math.round(sel.x)));
+      const y = Math.max(0, Math.min(this.height, Math.round(sel.y)));
+      const w = Math.max(0, Math.min(this.width - x, Math.round(sel.w)));
+      const h = Math.max(0, Math.min(this.height - y, Math.round(sel.h)));
+      this.selection = w > 1 && h > 1 ? { x, y, w, h } : null;
+    } else {
+      this.selection = null;
+    }
+    this.notify();
+  }
+  deleteSelection() {
+    const l = this.activeLayer;
+    const s = this.selection;
+    if (!l || !s) return;
+    const ctx = l.canvas.getContext("2d")!;
+    const before = ctx.getImageData(0, 0, this.width, this.height);
+    ctx.clearRect(s.x, s.y, s.w, s.h);
+    const after = ctx.getImageData(0, 0, this.width, this.height);
+    this.pushHistory({ layerId: l.id, before, after });
+    this.notify();
+  }
+  fillSelection(hex: string) {
+    const l = this.activeLayer;
+    const s = this.selection;
+    if (!l) return;
+    const ctx = l.canvas.getContext("2d")!;
+    const before = ctx.getImageData(0, 0, this.width, this.height);
+    ctx.fillStyle = hex;
+    if (s) ctx.fillRect(s.x, s.y, s.w, s.h);
+    else ctx.fillRect(0, 0, this.width, this.height);
+    const after = ctx.getImageData(0, 0, this.width, this.height);
+    this.pushHistory({ layerId: l.id, before, after });
+    this.notify();
+  }
+
 
   /** Converte coords do ecrã → coords da tela. */
   screenToCanvas(sx: number, sy: number): { x: number; y: number } {
@@ -359,13 +458,81 @@ export class TintEngine {
     }
     ctx.globalAlpha = 1;
 
+    const invScale = 1 / this.view.scale;
+
+    // Guias / grelha
+    if (this.showGuides) {
+      ctx.save();
+      ctx.lineWidth = invScale;
+      ctx.strokeStyle = "rgba(202,143,255,0.18)";
+      const g = this.gridSize;
+      for (let x = g; x < this.width; x += g) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, this.height);
+        ctx.stroke();
+      }
+      for (let y = g; y < this.height; y += g) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(this.width, y);
+        ctx.stroke();
+      }
+      // eixos centrais mais fortes
+      ctx.strokeStyle = "rgba(0,240,255,0.35)";
+      ctx.lineWidth = invScale * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(this.width / 2, 0);
+      ctx.lineTo(this.width / 2, this.height);
+      ctx.moveTo(0, this.height / 2);
+      ctx.lineTo(this.width, this.height / 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Linhas de simetria
+    if (this.symmetry !== "none") {
+      ctx.save();
+      ctx.lineWidth = invScale * 1.2;
+      ctx.setLineDash([8 * invScale, 6 * invScale]);
+      ctx.strokeStyle = "rgba(254,201,255,0.7)";
+      if (this.symmetry === "horizontal" || this.symmetry === "both") {
+        ctx.beginPath();
+        ctx.moveTo(this.width / 2, 0);
+        ctx.lineTo(this.width / 2, this.height);
+        ctx.stroke();
+      }
+      if (this.symmetry === "vertical" || this.symmetry === "both") {
+        ctx.beginPath();
+        ctx.moveTo(0, this.height / 2);
+        ctx.lineTo(this.width, this.height / 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // Borda da tela
-    ctx.lineWidth = 1 / this.view.scale;
+    ctx.lineWidth = invScale;
     ctx.strokeStyle = "rgba(0,0,0,0.25)";
     ctx.strokeRect(0, 0, this.width, this.height);
 
+    // Marquee de seleção (formiguinhas)
+    if (this.selection) {
+      const s = this.selection;
+      ctx.save();
+      ctx.lineWidth = invScale * 1.5;
+      ctx.setLineDash([6 * invScale, 4 * invScale]);
+      ctx.strokeStyle = "#00f0ff";
+      ctx.strokeRect(s.x, s.y, s.w, s.h);
+      ctx.strokeStyle = "#1a1a1a";
+      ctx.lineDashOffset = 5 * invScale;
+      ctx.strokeRect(s.x, s.y, s.w, s.h);
+      ctx.restore();
+    }
+
     ctx.restore();
   }
+
 
   // ---- Color picker ----
   pickColor(canvasX: number, canvasY: number): string | null {

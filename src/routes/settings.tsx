@@ -93,12 +93,15 @@ function SettingsClient() {
             Tint v0.1.0 — feito com{" "}
             <Heart className="inline h-3.5 w-3.5 text-pink-400" /> em Lovable.
           </p>
-          <button
-            disabled
-            className="mt-4 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-muted-foreground"
+          <a
+            href="https://github.com/sponsors"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-4 py-3 text-sm font-semibold text-primary-foreground"
           >
-            {t("settings.supportDev")} — em breve
-          </button>
+            <Heart className="h-4 w-4" strokeWidth={2.75} />
+            {t("settings.supportDev")}
+          </a>
         </section>
       </main>
     </div>

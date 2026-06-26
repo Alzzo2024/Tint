@@ -7,7 +7,6 @@ import {
   Undo2,
   Redo2,
   Layers as LayersIcon,
-  Palette,
   Pipette,
   Maximize2,
   Minimize2,
@@ -30,12 +29,17 @@ import {
   Brush,
   X,
   Check,
+  PaintBucket,
+  SquareDashed,
+  Grid3x3,
+  Wand2,
 } from "lucide-react";
-import { TintEngine } from "@/lib/drawing/engine";
+import { TintEngine, type SymmetryMode } from "@/lib/drawing/engine";
 import type { BrushKind, BrushSettings } from "@/lib/drawing/brushes";
-import { DrawingCanvas } from "@/components/editor/DrawingCanvas";
+import { DrawingCanvas, type ToolMode } from "@/components/editor/DrawingCanvas";
 import { ColorWheel } from "@/components/editor/ColorWheel";
 import { kvGet, kvSet } from "@/lib/db";
+
 
 export const Route = createFileRoute("/p/$id")({
   head: () => ({
@@ -74,10 +78,11 @@ function Editor() {
     opacity: 1,
     stabilizer: 0.3,
   });
-  const [eyedropper, setEyedropper] = useState(false);
-  const [panel, setPanel] = useState<"none" | "brush" | "color" | "layers" | "export">(
+  const [tool, setTool] = useState<ToolMode>("brush");
+  const [panel, setPanel] = useState<"none" | "brush" | "color" | "layers" | "export" | "more">(
     "none",
   );
+
   const [fullscreen, setFullscreen] = useState(false);
   const [recentColors, setRecentColors] = useState<string[]>([
     "#1a1a1a",
@@ -176,14 +181,16 @@ function Editor() {
       <DrawingCanvas
         engine={engine}
         brush={brush}
-        eyedropper={eyedropper}
+        tool={tool}
         onPickColor={(c) => {
           setColor(c);
-          setEyedropper(false);
+          setTool("brush");
         }}
+        onToolConsumed={() => setTool("brush")}
         onUndoGesture={() => engine.undo()}
         onRedoGesture={() => engine.redo()}
       />
+
 
       {/* Top bar */}
       {!fullscreen && (
@@ -240,6 +247,13 @@ function Editor() {
               <FlipHorizontal className="h-5 w-5" strokeWidth={2.5} />
             </IconBtn>
             <IconBtn
+              label={t("editor.more")}
+              onClick={() => setPanel(panel === "more" ? "none" : "more")}
+              active={panel === "more" || engine.symmetry !== "none" || engine.showGuides}
+            >
+              <Wand2 className="h-5 w-5" strokeWidth={2.5} />
+            </IconBtn>
+            <IconBtn
               label={t("editor.fullscreen")}
               onClick={() => setFullscreen(true)}
             >
@@ -248,6 +262,7 @@ function Editor() {
           </div>
         </header>
       )}
+
 
       {/* Fullscreen exit */}
       {fullscreen && (
@@ -301,11 +316,32 @@ function Editor() {
               style={{ background: brush.color, border: "2px solid rgba(255,255,255,0.15)" }}
             />
             <ToolBtn
-              active={eyedropper}
-              onClick={() => setEyedropper((v) => !v)}
+              active={tool === "eyedropper"}
+              onClick={() => setTool(tool === "eyedropper" ? "brush" : "eyedropper")}
               label={t("tools.eyedropper")}
             >
               <Pipette className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "fill"}
+              onClick={() => setTool(tool === "fill" ? "brush" : "fill")}
+              label={t("tools.fill")}
+            >
+              <PaintBucket className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "select"}
+              onClick={() => {
+                if (tool === "select") {
+                  setTool("brush");
+                  engine.setSelection(null);
+                } else {
+                  setTool("select");
+                }
+              }}
+              label={t("tools.select")}
+            >
+              <SquareDashed className="h-5 w-5" strokeWidth={2.5} />
             </ToolBtn>
             <ToolBtn
               active={panel === "layers"}
@@ -324,6 +360,7 @@ function Editor() {
           </div>
         </div>
       )}
+
 
       {/* Panels */}
       {panel === "brush" && (
@@ -388,6 +425,17 @@ function Editor() {
           <LayersPanel engine={engine} />
         </Panel>
       )}
+
+      {panel === "more" && (
+        <Panel onClose={() => setPanel("none")} title={t("editor.more")}>
+          <MorePanel
+            engine={engine}
+            onClose={() => setPanel("none")}
+            brushColor={brush.color}
+          />
+        </Panel>
+      )}
+
 
       {panel === "export" && (
         <Panel onClose={() => setPanel("none")} title={t("editor.export")}>
@@ -723,3 +771,110 @@ function ExportPanel({ engine }: { engine: TintEngine }) {
     </div>
   );
 }
+
+function MorePanel({
+  engine,
+  onClose,
+  brushColor,
+}: {
+  engine: TintEngine;
+  onClose: () => void;
+  brushColor: string;
+}) {
+  const { t } = useTranslation();
+  const [, force] = useState(0);
+  useEffect(() => engine.subscribe(() => force((n) => n + 1)), [engine]);
+
+  const sym = engine.symmetry;
+  const symOptions: { mode: SymmetryMode; label: string }[] = [
+    { mode: "none", label: t("more.symNone") },
+    { mode: "horizontal", label: t("more.symH") },
+    { mode: "vertical", label: t("more.symV") },
+    { mode: "both", label: t("more.symBoth") },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
+          {t("more.symmetry")}
+        </p>
+        <div className="grid grid-cols-4 gap-1.5">
+          {symOptions.map(({ mode, label }) => (
+            <button
+              key={mode}
+              onClick={() => engine.setSymmetry(mode)}
+              className={`rounded-xl border px-2 py-2 text-xs transition ${
+                sym === mode
+                  ? "border-transparent bg-gradient-brand text-primary-foreground"
+                  : "border-white/10 bg-white/5 hover:bg-white/10"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-xl bg-white/5 p-3">
+        <div>
+          <p className="text-sm font-medium">{t("more.guides")}</p>
+          <p className="text-xs text-muted-foreground">{t("more.guidesHint")}</p>
+        </div>
+        <button
+          onClick={() => engine.toggleGuides()}
+          className={`flex h-7 w-12 items-center rounded-full p-0.5 transition ${
+            engine.showGuides ? "bg-gradient-brand" : "bg-white/10"
+          }`}
+        >
+          <span
+            className={`h-6 w-6 rounded-full bg-white transition ${
+              engine.showGuides ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
+          {t("more.selection")}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            disabled={!engine.selection}
+            onClick={() => {
+              engine.deleteSelection();
+            }}
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-medium transition hover:bg-white/10 disabled:opacity-40"
+          >
+            {t("more.clearSelection")}
+          </button>
+          <button
+            onClick={() => {
+              engine.fillSelection(brushColor);
+            }}
+            className="rounded-xl bg-gradient-brand px-3 py-2.5 text-sm font-semibold text-primary-foreground"
+          >
+            {t("more.fillSelection")}
+          </button>
+        </div>
+        {engine.selection && (
+          <button
+            onClick={() => engine.setSelection(null)}
+            className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs"
+          >
+            {t("more.deselect")}
+          </button>
+        )}
+      </div>
+
+      <button
+        onClick={onClose}
+        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+      >
+        {t("common.close")}
+      </button>
+    </div>
+  );
+}
+
