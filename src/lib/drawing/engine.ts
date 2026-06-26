@@ -458,13 +458,81 @@ export class TintEngine {
     }
     ctx.globalAlpha = 1;
 
+    const invScale = 1 / this.view.scale;
+
+    // Guias / grelha
+    if (this.showGuides) {
+      ctx.save();
+      ctx.lineWidth = invScale;
+      ctx.strokeStyle = "rgba(202,143,255,0.18)";
+      const g = this.gridSize;
+      for (let x = g; x < this.width; x += g) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, this.height);
+        ctx.stroke();
+      }
+      for (let y = g; y < this.height; y += g) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(this.width, y);
+        ctx.stroke();
+      }
+      // eixos centrais mais fortes
+      ctx.strokeStyle = "rgba(0,240,255,0.35)";
+      ctx.lineWidth = invScale * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(this.width / 2, 0);
+      ctx.lineTo(this.width / 2, this.height);
+      ctx.moveTo(0, this.height / 2);
+      ctx.lineTo(this.width, this.height / 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Linhas de simetria
+    if (this.symmetry !== "none") {
+      ctx.save();
+      ctx.lineWidth = invScale * 1.2;
+      ctx.setLineDash([8 * invScale, 6 * invScale]);
+      ctx.strokeStyle = "rgba(254,201,255,0.7)";
+      if (this.symmetry === "horizontal" || this.symmetry === "both") {
+        ctx.beginPath();
+        ctx.moveTo(this.width / 2, 0);
+        ctx.lineTo(this.width / 2, this.height);
+        ctx.stroke();
+      }
+      if (this.symmetry === "vertical" || this.symmetry === "both") {
+        ctx.beginPath();
+        ctx.moveTo(0, this.height / 2);
+        ctx.lineTo(this.width, this.height / 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // Borda da tela
-    ctx.lineWidth = 1 / this.view.scale;
+    ctx.lineWidth = invScale;
     ctx.strokeStyle = "rgba(0,0,0,0.25)";
     ctx.strokeRect(0, 0, this.width, this.height);
 
+    // Marquee de seleção (formiguinhas)
+    if (this.selection) {
+      const s = this.selection;
+      ctx.save();
+      ctx.lineWidth = invScale * 1.5;
+      ctx.setLineDash([6 * invScale, 4 * invScale]);
+      ctx.strokeStyle = "#00f0ff";
+      ctx.strokeRect(s.x, s.y, s.w, s.h);
+      ctx.strokeStyle = "#1a1a1a";
+      ctx.lineDashOffset = 5 * invScale;
+      ctx.strokeRect(s.x, s.y, s.w, s.h);
+      ctx.restore();
+    }
+
     ctx.restore();
   }
+
 
   // ---- Color picker ----
   pickColor(canvasX: number, canvasY: number): string | null {
