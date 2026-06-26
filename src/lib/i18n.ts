@@ -35,7 +35,7 @@ if (!i18n.isInitialized) {
     lng: getStoredLanguage(),
     fallbackLng: DEFAULT_LANGUAGE,
     supportedLngs: [...SUPPORTED_LANGUAGES],
-    initImmediate: false,
+    initAsync: false,
     interpolation: { escapeValue: false },
     returnNull: false,
     returnEmptyString: false,
