@@ -426,6 +426,17 @@ function Editor() {
         </Panel>
       )}
 
+      {panel === "more" && (
+        <Panel onClose={() => setPanel("none")} title={t("editor.more")}>
+          <MorePanel
+            engine={engine}
+            onClose={() => setPanel("none")}
+            brushColor={brush.color}
+          />
+        </Panel>
+      )}
+
+
       {panel === "export" && (
         <Panel onClose={() => setPanel("none")} title={t("editor.export")}>
           <ExportPanel engine={engine} />
