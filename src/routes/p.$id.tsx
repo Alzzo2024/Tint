@@ -82,9 +82,10 @@ function Editor() {
     stabilizer: 0.3,
   });
   const [tool, setTool] = useState<ToolMode>("brush");
-  const [panel, setPanel] = useState<"none" | "brush" | "color" | "layers" | "export" | "more">(
-    "none",
-  );
+  const [panel, setPanel] = useState<
+    "none" | "brush" | "color" | "layers" | "export" | "more" | "tools" | "text"
+  >("none");
+  const [textPending, setTextPending] = useState<{ x: number; y: number } | null>(null);
 
   const [fullscreen, setFullscreen] = useState(false);
   const [recentColors, setRecentColors] = useState<string[]>([
