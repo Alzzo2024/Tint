@@ -115,6 +115,7 @@ function GalleryClient() {
                   setRenaming(p.id);
                   setRenameValue(p.name);
                 }}
+                onDelete={() => setDeleting(p.id)}
               />
             ))}
           </div>
