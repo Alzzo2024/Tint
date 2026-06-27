@@ -201,7 +201,7 @@ function Editor() {
         onRedoGesture={() => engine.redo()}
       />
 
-      {/* Top bar — apenas voltar + estado */}
+      {/* Top bar */}
       {!fullscreen && (
         <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between p-3">
           <div className="pointer-events-auto flex items-center gap-2">
@@ -222,10 +222,39 @@ function Editor() {
               )}
             </div>
           </div>
-          <div className="pointer-events-auto flex items-center gap-2">
-            <IconBtn label={t("editor.fullscreen")} onClick={() => setFullscreen(true)}>
+          <div className="pointer-events-auto glass flex items-center gap-0.5 rounded-full p-1">
+            <ToolBtn
+              label={t("editor.undo")}
+              onClick={() => engine.undo()}
+            >
+              <Undo2 className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              label={t("editor.redo")}
+              onClick={() => engine.redo()}
+            >
+              <Redo2 className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              label={t("editor.fullscreen")}
+              onClick={() => setFullscreen(true)}
+            >
               <Maximize2 className="h-5 w-5" strokeWidth={2.5} />
-            </IconBtn>
+            </ToolBtn>
+            <ToolBtn
+              active={tool === "pan"}
+              label={t("tools.pan")}
+              onClick={() => setTool(tool === "pan" ? "brush" : "pan")}
+            >
+              <Hand className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
+            <ToolBtn
+              active={panel === "export"}
+              label={t("editor.export")}
+              onClick={() => setPanel(panel === "export" ? "none" : "export")}
+            >
+              <Download className="h-5 w-5" strokeWidth={2.5} />
+            </ToolBtn>
           </div>
         </header>
       )}
@@ -243,10 +272,14 @@ function Editor() {
         </button>
       )}
 
-      {/* Left sliders */}
+      {/* Left collapsible sliders */}
       {!fullscreen && (
-        <div className="pointer-events-none absolute left-0 top-0 z-10 flex h-full items-center pl-3">
-          <div className="glass pointer-events-auto flex flex-col items-center gap-4 rounded-full px-2 py-4">
+        <div className="pointer-events-none absolute left-0 top-1/2 z-10 flex -translate-y-1/2 items-center">
+          <div
+            className={`glass pointer-events-auto flex flex-col items-center gap-3 overflow-hidden rounded-r-3xl py-3 transition-all duration-200 ${
+              slidersOpen ? "max-w-[64px] px-2 opacity-100" : "max-w-0 px-0 opacity-0"
+            }`}
+          >
             <VerticalSlider
               value={brush.size}
               min={1}
@@ -263,6 +296,54 @@ function Editor() {
               label={t("editor.opacity")}
             />
           </div>
+          <button
+            onClick={() => setSlidersOpen((o) => !o)}
+            aria-label={slidersOpen ? t("common.close") : t("editor.size")}
+            className="glass pointer-events-auto flex h-12 w-6 items-center justify-center rounded-r-full"
+          >
+            {slidersOpen ? (
+              <ChevronLeft className="h-4 w-4" strokeWidth={2.75} />
+            ) : (
+              <ChevronRight className="h-4 w-4" strokeWidth={2.75} />
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Right collapsible Layers */}
+      {!fullscreen && (
+        <div className="pointer-events-none absolute right-0 top-1/2 z-10 flex -translate-y-1/2 items-center">
+          <button
+            onClick={() => setPanel(panel === "layers" ? "none" : "layers")}
+            aria-label={t("editor.layers")}
+            className="glass pointer-events-auto flex h-12 w-6 items-center justify-center rounded-l-full"
+          >
+            {panel === "layers" ? (
+              <ChevronRight className="h-4 w-4" strokeWidth={2.75} />
+            ) : (
+              <ChevronLeft className="h-4 w-4" strokeWidth={2.75} />
+            )}
+          </button>
+          <div
+            className={`glass-strong pointer-events-auto overflow-hidden rounded-l-3xl transition-all duration-200 ${
+              panel === "layers" ? "max-w-[280px] p-4 opacity-100" : "max-w-0 p-0 opacity-0"
+            }`}
+            style={{ width: panel === "layers" ? 280 : 0 }}
+          >
+            <div className="w-[248px]">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-semibold">{t("editor.layers")}</h2>
+                <button
+                  onClick={() => setPanel("none")}
+                  className="rounded-full p-1.5 hover:bg-white/10"
+                  aria-label={t("common.close")}
+                >
+                  <X className="h-4 w-4" strokeWidth={2.5} />
+                </button>
+              </div>
+              <LayersPanel engine={engine} />
+            </div>
+          </div>
         </div>
       )}
 
@@ -270,13 +351,6 @@ function Editor() {
       {!fullscreen && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-3">
           <div className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1.5">
-            <ToolBtn
-              active={panel === "tools"}
-              onClick={() => setPanel(panel === "tools" ? "none" : "tools")}
-              label={t("editor.more")}
-            >
-              <Plus className="h-5 w-5" strokeWidth={2.75} />
-            </ToolBtn>
             <ToolBtn
               active={panel === "brush"}
               onClick={() => setPanel(panel === "brush" ? "none" : "brush")}
@@ -305,34 +379,6 @@ function Editor() {
               <PaintBucket className="h-5 w-5" strokeWidth={2.5} />
             </ToolBtn>
             <ToolBtn
-              active={tool === "pan"}
-              onClick={() => setTool(tool === "pan" ? "brush" : "pan")}
-              label={t("tools.pan")}
-            >
-              <Hand className="h-5 w-5" strokeWidth={2.5} />
-            </ToolBtn>
-            <ToolBtn
-              active={tool === "text"}
-              onClick={() => setTool(tool === "text" ? "brush" : "text")}
-              label={t("tools.text")}
-            >
-              <Type className="h-5 w-5" strokeWidth={2.5} />
-            </ToolBtn>
-            <ToolBtn
-              active={tool === "select"}
-              onClick={() => {
-                if (tool === "select") {
-                  setTool("brush");
-                  engine.setSelection(null);
-                } else {
-                  setTool("select");
-                }
-              }}
-              label={t("tools.select")}
-            >
-              <SquareDashed className="h-5 w-5" strokeWidth={2.5} />
-            </ToolBtn>
-            <ToolBtn
               active={panel === "layers"}
               onClick={() => setPanel(panel === "layers" ? "none" : "layers")}
               label={t("editor.layers")}
@@ -340,16 +386,18 @@ function Editor() {
               <LayersIcon className="h-5 w-5" strokeWidth={2.5} />
             </ToolBtn>
             <ToolBtn
-              active={panel === "export"}
-              onClick={() => setPanel(panel === "export" ? "none" : "export")}
-              label={t("editor.export")}
+              active={panel === "tools"}
+              onClick={() => setPanel(panel === "tools" ? "none" : "tools")}
+              label={t("editor.more")}
             >
-              <Download className="h-5 w-5" strokeWidth={2.5} />
+              <Plus className="h-5 w-5" strokeWidth={2.75} />
             </ToolBtn>
           </div>
 
         </div>
       )}
+
+
 
 
       {/* Panels */}
