@@ -85,6 +85,8 @@ function Editor() {
   const [panel, setPanel] = useState<
     "none" | "brush" | "color" | "layers" | "export" | "more" | "tools" | "text"
   >("none");
+  const [slidersOpen, setSlidersOpen] = useState(true);
+
   const [textPending, setTextPending] = useState<{ x: number; y: number } | null>(null);
 
   const [fullscreen, setFullscreen] = useState(false);
