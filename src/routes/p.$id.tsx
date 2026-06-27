@@ -460,11 +460,8 @@ function Editor() {
         </Panel>
       )}
 
-      {panel === "layers" && (
-        <Panel onClose={() => setPanel("none")} title={t("editor.layers")}>
-          <LayersPanel engine={engine} />
-        </Panel>
-      )}
+      {/* Layers rendered as right-side drawer above */}
+
 
       {panel === "more" && (
         <Panel onClose={() => setPanel("none")} title={t("editor.more")}>
