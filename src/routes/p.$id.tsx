@@ -487,18 +487,6 @@ function Editor() {
         <Panel onClose={() => setPanel("none")} title={t("editor.more")}>
           <div className="grid grid-cols-3 gap-2">
             <ActionTile
-              label={t("editor.undo")}
-              icon={<Undo2 className="h-5 w-5" strokeWidth={2.5} />}
-              onClick={() => engine.undo()}
-              disabled={!engine.canUndo()}
-            />
-            <ActionTile
-              label={t("editor.redo")}
-              icon={<Redo2 className="h-5 w-5" strokeWidth={2.5} />}
-              onClick={() => engine.redo()}
-              disabled={!engine.canRedo()}
-            />
-            <ActionTile
               label={t("editor.resetView")}
               icon={<Crosshair className="h-5 w-5" strokeWidth={2.5} />}
               onClick={() => {
@@ -519,14 +507,44 @@ function Editor() {
               onClick={() => engine.flipVertical()}
             />
             <ActionTile
-              label={t("editor.more")}
+              label={t("more.symmetry")}
               icon={<Wand2 className="h-5 w-5" strokeWidth={2.5} />}
-              active={engine.symmetry !== "none" || engine.showGuides}
+              active={engine.symmetry !== "none"}
               onClick={() => setPanel("more")}
+            />
+            <ActionTile
+              label={t("tools.select")}
+              icon={<SquareDashed className="h-5 w-5" strokeWidth={2.5} />}
+              active={tool === "select"}
+              onClick={() => {
+                if (tool === "select") {
+                  setTool("brush");
+                  engine.setSelection(null);
+                } else {
+                  setTool("select");
+                }
+                setPanel("none");
+              }}
+            />
+            <ActionTile
+              label={t("tools.text")}
+              icon={<Type className="h-5 w-5" strokeWidth={2.5} />}
+              active={tool === "text"}
+              onClick={() => {
+                setTool(tool === "text" ? "brush" : "text");
+                setPanel("none");
+              }}
+            />
+            <ActionTile
+              label={t("more.guides")}
+              icon={<Grid3x3 className="h-5 w-5" strokeWidth={2.5} />}
+              active={engine.showGuides}
+              onClick={() => engine.toggleGuides()}
             />
           </div>
         </Panel>
       )}
+
 
       {panel === "text" && textPending && (
         <Panel onClose={() => { setPanel("none"); setTextPending(null); }} title={t("text.title")}>
