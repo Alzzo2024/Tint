@@ -46,7 +46,7 @@ function SettingsClient() {
           <h2 className="text-sm font-semibold text-muted-foreground">
             {t("settings.language")}
           </h2>
-          <div className="relative mt-3">
+          <div className="mt-3">
             <button
               onClick={() => setOpen((o) => !o)}
               className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm transition hover:bg-white/10"
@@ -61,7 +61,7 @@ function SettingsClient() {
               />
             </button>
             {open && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#1f1f1f] shadow-2xl">
+              <div className="mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#1f1f1f] shadow-2xl">
                 {LANGUAGES.map((l) => {
                   const active = l.code === lang;
                   return (
@@ -84,6 +84,7 @@ function SettingsClient() {
               </div>
             )}
           </div>
+
         </section>
 
         <section className="glass rounded-3xl p-5">
