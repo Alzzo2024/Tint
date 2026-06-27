@@ -35,6 +35,8 @@ import {
   Wand2,
   Hand,
   Type,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { TintEngine, type SymmetryMode } from "@/lib/drawing/engine";
 import type { BrushKind, BrushSettings } from "@/lib/drawing/brushes";
