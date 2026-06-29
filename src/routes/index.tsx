@@ -9,6 +9,8 @@ import {
   Trash2,
   Settings as SettingsIcon,
   Image as ImageIcon,
+  RotateCcw,
+  X,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import {
@@ -16,6 +18,8 @@ import {
   deleteProject,
   duplicateProject,
   renameProject,
+  restoreProject,
+  purgeProject,
   PRESETS,
 } from "@/lib/projects";
 import { useTranslation } from "@/lib/i18n";
@@ -49,9 +53,14 @@ function GalleryClient() {
     [],
     [],
   );
+  const live = projects ?? [];
+  const active = live.filter((p) => !p.deletedAt);
+  const trashed = live.filter((p) => p.deletedAt);
   const [newOpen, setNewOpen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [purging, setPurging] = useState<string | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
   const [renameValue, setRenameValue] = useState("");
 
   return (
@@ -63,13 +72,28 @@ function GalleryClient() {
           </h1>
           <p className="text-sm text-muted-foreground">{t("gallery.title")}</p>
         </div>
-        <Link
-          to="/settings"
-          aria-label={t("editor.settings")}
-          className="glass flex h-11 w-11 items-center justify-center rounded-full"
-        >
-          <SettingsIcon className="h-5 w-5" strokeWidth={2.5} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowTrash(true)}
+            aria-label="Reciclagem"
+            title="Reciclagem"
+            className="glass relative flex h-11 w-11 items-center justify-center rounded-full"
+          >
+            <Trash2 className="h-5 w-5" strokeWidth={2.5} />
+            {trashed.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-brand px-1 text-[10px] font-bold text-primary-foreground">
+                {trashed.length}
+              </span>
+            )}
+          </button>
+          <Link
+            to="/settings"
+            aria-label={t("editor.settings")}
+            className="glass flex h-11 w-11 items-center justify-center rounded-full"
+          >
+            <SettingsIcon className="h-5 w-5" strokeWidth={2.5} />
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto mt-6 max-w-5xl">
