@@ -75,6 +75,8 @@ export class TintEngine {
   showGuides = false;
   gridSize = 64;
   selection: Selection | null = null;
+  texts: FloatingText[] = [];
+  activeTextId: string | null = null;
 
   private history: HistoryEntry[] = [];
   private future: HistoryEntry[] = [];
