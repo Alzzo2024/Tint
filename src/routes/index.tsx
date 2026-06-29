@@ -550,3 +550,112 @@ function ConfirmDialog({
     </div>
   );
 }
+
+interface TrashItem {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  thumbnail?: Blob;
+  deletedAt: number;
+}
+
+function TrashDrawer({
+  items,
+  onClose,
+  onRestore,
+  onPurge,
+}: {
+  items: TrashItem[];
+  onClose: () => void;
+  onRestore: (id: string) => Promise<void> | void;
+  onPurge: (id: string) => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="glass-strong w-full max-w-lg rounded-3xl p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Reciclagem</h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 hover:bg-white/10"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        </div>
+        {items.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Sem projectos eliminados.
+          </p>
+        ) : (
+          <ul className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {items.map((p) => (
+              <TrashRow
+                key={p.id}
+                item={p}
+                onRestore={() => onRestore(p.id)}
+                onPurge={() => onPurge(p.id)}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TrashRow({
+  item,
+  onRestore,
+  onPurge,
+}: {
+  item: TrashItem;
+  onRestore: () => void;
+  onPurge: () => void;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!item.thumbnail) return;
+    const u = URL.createObjectURL(item.thumbnail);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [item.thumbnail]);
+  return (
+    <li className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-2">
+      <div className="h-12 w-12 flex-none overflow-hidden rounded-lg bg-white">
+        {url ? (
+          <img src={url} alt={item.name} className="h-full w-full object-cover" />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{item.name}</p>
+        <p className="text-xs text-muted-foreground">
+          {item.width}×{item.height} · eliminado {new Date(item.deletedAt).toLocaleDateString()}
+        </p>
+      </div>
+      <button
+        onClick={onRestore}
+        className="rounded-full bg-gradient-brand p-2 text-primary-foreground"
+        aria-label="Restaurar"
+        title="Restaurar"
+      >
+        <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+      <button
+        onClick={onPurge}
+        className="rounded-full p-2 text-destructive hover:bg-destructive/20"
+        aria-label="Eliminar"
+        title="Eliminar permanentemente"
+      >
+        <Trash2 className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+    </li>
+  );
+}
