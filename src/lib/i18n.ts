@@ -4,6 +4,7 @@ import { enGB } from "./locales/en-GB";
 import { ptBR } from "./locales/pt-BR";
 import { enUS } from "./locales/en-US";
 import { esES } from "./locales/es-ES";
+import { esMX } from "./locales/es-MX";
 import { frFR } from "./locales/fr-FR";
 import { frCA } from "./locales/fr-CA";
 import { deDE } from "./locales/de-DE";
@@ -15,6 +16,7 @@ const SUPPORTED_LANGUAGES = [
   "pt-PT",
   "pt-BR",
   "es-ES",
+  "es-MX",
   "fr-FR",
   "fr-CA",
   "de-DE",
@@ -30,6 +32,7 @@ const dictionaries: Record<Language, Translation> = {
   "pt-PT": ptPT,
   "pt-BR": ptBR,
   "es-ES": esES,
+  "es-MX": esMX,
   "fr-FR": frFR,
   "fr-CA": frCA,
   "de-DE": deDE,
@@ -56,7 +59,7 @@ function detectFromNavigator(): Language {
     const base = lower.split("-")[0];
     if (base === "pt") return lower.includes("br") ? "pt-BR" : "pt-PT";
     if (base === "en") return lower.includes("us") ? "en-US" : "en-GB";
-    if (base === "es") return "es-ES";
+    if (base === "es") return lower.includes("mx") || lower.includes("419") ? "es-MX" : "es-ES";
     if (base === "fr") return lower.includes("ca") ? "fr-CA" : "fr-FR";
     if (base === "de") return "de-DE";
     if (base === "it") return "it-IT";
@@ -164,6 +167,7 @@ export const LANGUAGES: { code: Language; label: string; flag: string }[] = [
   { code: "pt-PT", label: "Português", flag: "🇵🇹" },
   { code: "pt-BR", label: "Português (BR)", flag: "🇧🇷" },
   { code: "es-ES", label: "Castellano", flag: "🇪🇸" },
+  { code: "es-MX", label: "Castellano (MX)", flag: "🇲🇽" },
   { code: "fr-FR", label: "Français", flag: "🇫🇷" },
   { code: "fr-CA", label: "Français (CA)", flag: "🇨🇦" },
   { code: "de-DE", label: "Deutsch", flag: "🇩🇪" },
