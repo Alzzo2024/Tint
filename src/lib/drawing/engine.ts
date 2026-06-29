@@ -529,13 +529,19 @@ export class TintEngine {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, this.width, this.height);
 
-    // Sombra suave da tela
+    // Camadas com blend modes
     for (const l of this.layers) {
       if (!l.visible) continue;
       ctx.globalAlpha = l.opacity;
+      ctx.globalCompositeOperation =
+        (l.blendMode ?? "normal") === "normal" ? "source-over" : (l.blendMode as GlobalCompositeOperation);
       ctx.drawImage(l.canvas, 0, 0);
     }
     ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+
+    // Floating texts (rendered above layers, ainda não rasterizados)
+    if (this.texts.length > 0) this.renderTexts(ctx);
 
     const invScale = 1 / this.view.scale;
 
