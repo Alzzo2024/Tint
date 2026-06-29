@@ -9,6 +9,8 @@ import {
   Trash2,
   Settings as SettingsIcon,
   Image as ImageIcon,
+  RotateCcw,
+  X,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import {
@@ -16,6 +18,8 @@ import {
   deleteProject,
   duplicateProject,
   renameProject,
+  restoreProject,
+  purgeProject,
   PRESETS,
 } from "@/lib/projects";
 import { useTranslation } from "@/lib/i18n";
@@ -49,9 +53,14 @@ function GalleryClient() {
     [],
     [],
   );
+  const live = projects ?? [];
+  const active = live.filter((p) => !p.deletedAt);
+  const trashed = live.filter((p) => p.deletedAt);
   const [newOpen, setNewOpen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [purging, setPurging] = useState<string | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
   const [renameValue, setRenameValue] = useState("");
 
   return (
@@ -63,17 +72,32 @@ function GalleryClient() {
           </h1>
           <p className="text-sm text-muted-foreground">{t("gallery.title")}</p>
         </div>
-        <Link
-          to="/settings"
-          aria-label={t("editor.settings")}
-          className="glass flex h-11 w-11 items-center justify-center rounded-full"
-        >
-          <SettingsIcon className="h-5 w-5" strokeWidth={2.5} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowTrash(true)}
+            aria-label="Reciclagem"
+            title="Reciclagem"
+            className="glass relative flex h-11 w-11 items-center justify-center rounded-full"
+          >
+            <Trash2 className="h-5 w-5" strokeWidth={2.5} />
+            {trashed.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-brand px-1 text-[10px] font-bold text-primary-foreground">
+                {trashed.length}
+              </span>
+            )}
+          </button>
+          <Link
+            to="/settings"
+            aria-label={t("editor.settings")}
+            className="glass flex h-11 w-11 items-center justify-center rounded-full"
+          >
+            <SettingsIcon className="h-5 w-5" strokeWidth={2.5} />
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto mt-6 max-w-5xl">
-        {projects && projects.length === 0 && (
+        {active.length === 0 && (
           <div className="glass mt-12 flex flex-col items-center rounded-3xl p-10 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-brand text-primary-foreground">
               <ImageIcon className="h-8 w-8" strokeWidth={2.5} />
@@ -90,7 +114,7 @@ function GalleryClient() {
           </div>
         )}
 
-        {projects && projects.length > 0 && (
+        {active.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             <button
               onClick={() => setNewOpen(true)}
@@ -103,7 +127,7 @@ function GalleryClient() {
                 {t("gallery.new")}
               </span>
             </button>
-            {projects.map((p) => (
+            {active.map((p) => (
               <ProjectCard
                 key={p.id}
                 id={p.id}
@@ -147,6 +171,34 @@ function GalleryClient() {
             await deleteProject(deleting);
             setDeleting(null);
           }}
+        />
+      )}
+      {purging && (
+        <ConfirmDialog
+          title="Eliminar permanentemente?"
+          body="Esta acção não pode ser desfeita. As camadas serão apagadas."
+          confirmLabel={t("common.delete")}
+          danger
+          onCancel={() => setPurging(null)}
+          onConfirm={async () => {
+            await purgeProject(purging);
+            setPurging(null);
+          }}
+        />
+      )}
+      {showTrash && (
+        <TrashDrawer
+          items={trashed.map((p) => ({
+            id: p.id,
+            name: p.name,
+            width: p.width,
+            height: p.height,
+            thumbnail: p.thumbnail,
+            deletedAt: p.deletedAt!,
+          }))}
+          onClose={() => setShowTrash(false)}
+          onRestore={async (id) => { await restoreProject(id); }}
+          onPurge={(id) => setPurging(id)}
         />
       )}
     </div>
@@ -496,5 +548,114 @@ function ConfirmDialog({
         </div>
       </div>
     </div>
+  );
+}
+
+interface TrashItem {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  thumbnail?: Blob;
+  deletedAt: number;
+}
+
+function TrashDrawer({
+  items,
+  onClose,
+  onRestore,
+  onPurge,
+}: {
+  items: TrashItem[];
+  onClose: () => void;
+  onRestore: (id: string) => Promise<void> | void;
+  onPurge: (id: string) => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="glass-strong w-full max-w-lg rounded-3xl p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Reciclagem</h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 hover:bg-white/10"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        </div>
+        {items.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Sem projectos eliminados.
+          </p>
+        ) : (
+          <ul className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {items.map((p) => (
+              <TrashRow
+                key={p.id}
+                item={p}
+                onRestore={() => onRestore(p.id)}
+                onPurge={() => onPurge(p.id)}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TrashRow({
+  item,
+  onRestore,
+  onPurge,
+}: {
+  item: TrashItem;
+  onRestore: () => void;
+  onPurge: () => void;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!item.thumbnail) return;
+    const u = URL.createObjectURL(item.thumbnail);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [item.thumbnail]);
+  return (
+    <li className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-2">
+      <div className="h-12 w-12 flex-none overflow-hidden rounded-lg bg-white">
+        {url ? (
+          <img src={url} alt={item.name} className="h-full w-full object-cover" />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{item.name}</p>
+        <p className="text-xs text-muted-foreground">
+          {item.width}×{item.height} · eliminado {new Date(item.deletedAt).toLocaleDateString()}
+        </p>
+      </div>
+      <button
+        onClick={onRestore}
+        className="rounded-full bg-gradient-brand p-2 text-primary-foreground"
+        aria-label="Restaurar"
+        title="Restaurar"
+      >
+        <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+      <button
+        onClick={onPurge}
+        className="rounded-full p-2 text-destructive hover:bg-destructive/20"
+        aria-label="Eliminar"
+        title="Eliminar permanentemente"
+      >
+        <Trash2 className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+    </li>
   );
 }

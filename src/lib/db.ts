@@ -18,7 +18,27 @@ export interface ProjectRow {
   thumbnail?: Blob;
   createdAt: number;
   updatedAt: number;
+  /** soft-delete timestamp; rows with deletedAt set live in the trash */
+  deletedAt?: number | null;
 }
+
+export type LayerBlendMode =
+  | "normal"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "color-dodge"
+  | "color-burn"
+  | "soft-light"
+  | "hard-light"
+  | "difference"
+  | "exclusion"
+  | "hue"
+  | "saturation"
+  | "color"
+  | "luminosity";
 
 export interface LayerRow {
   id: string;
@@ -27,6 +47,7 @@ export interface LayerRow {
   order: number;
   opacity: number;
   visible: boolean;
+  blendMode?: LayerBlendMode;
   /** PNG blob com pixels da camada à resolução do projeto */
   blob: Blob;
 }
@@ -57,6 +78,21 @@ class TintDB extends Dexie {
       palettes: "id, createdAt, name",
       kv: "key",
     });
+    this.version(2)
+      .stores({
+        projects: "id, updatedAt, createdAt, name, deletedAt",
+        layers: "id, projectId, order",
+        palettes: "id, createdAt, name",
+        kv: "key",
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table("projects")
+          .toCollection()
+          .modify((p: ProjectRow) => {
+            if (p.deletedAt === undefined) p.deletedAt = null;
+          });
+      });
   }
 }
 

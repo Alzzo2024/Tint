@@ -41,7 +41,7 @@ import {
 import { TintEngine, type SymmetryMode } from "@/lib/drawing/engine";
 import type { BrushKind, BrushSettings } from "@/lib/drawing/brushes";
 import { DrawingCanvas, type ToolMode } from "@/components/editor/DrawingCanvas";
-import { ColorWheel } from "@/components/editor/ColorWheel";
+import { ColorPicker } from "@/components/editor/ColorPicker";
 import { kvGet, kvSet } from "@/lib/db";
 import { useTranslation } from "@/lib/i18n";
 
@@ -90,6 +90,7 @@ function Editor() {
   const [slidersOpen, setSlidersOpen] = useState(true);
 
   const [textPending, setTextPending] = useState<{ x: number; y: number } | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   const [fullscreen, setFullscreen] = useState(false);
   const [recentColors, setRecentColors] = useState<string[]>([
@@ -436,7 +437,7 @@ function Editor() {
       {panel === "color" && (
         <Panel onClose={() => setPanel("none")} title={t("editor.color")}>
           <div className="flex flex-col items-center">
-            <ColorWheel color={brush.color} onChange={setColor} />
+            <ColorPicker color={brush.color} onChange={setColor} />
           </div>
           <div className="mt-4">
             <p className="mb-2 text-xs font-medium text-muted-foreground">
@@ -543,18 +544,55 @@ function Editor() {
       )}
 
 
-      {panel === "text" && textPending && (
-        <Panel onClose={() => { setPanel("none"); setTextPending(null); }} title={t("text.title")}>
+      {panel === "text" && (textPending || editingTextId) && (
+        <Panel
+          onClose={() => { setPanel("none"); setTextPending(null); setEditingTextId(null); }}
+          title={t("text.title")}
+        >
           <TextPanel
             color={brush.color}
-            onCancel={() => { setPanel("none"); setTextPending(null); }}
+            initial={
+              editingTextId
+                ? engine.texts.find((x) => x.id === editingTextId) ?? undefined
+                : undefined
+            }
+            onCancel={() => { setPanel("none"); setTextPending(null); setEditingTextId(null); }}
             onConfirm={(opts) => {
-              engine.addText({ x: textPending.x, y: textPending.y, color: brush.color, ...opts });
+              if (editingTextId) {
+                engine.updateText(editingTextId, opts);
+              } else if (textPending) {
+                engine.addFloatingText({ x: textPending.x, y: textPending.y, color: brush.color, ...opts });
+              }
               setPanel("none");
               setTextPending(null);
+              setEditingTextId(null);
             }}
           />
         </Panel>
+      )}
+
+      {/* Toolbar para texto flutuante seleccionado */}
+      {engine.activeTextId && !fullscreen && (
+        <div className="pointer-events-auto absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/70 p-1 backdrop-blur">
+          <button
+            onClick={() => { setEditingTextId(engine.activeTextId); setPanel("text"); }}
+            className="rounded-full px-3 py-1.5 text-xs font-medium hover:bg-white/10"
+          >
+            ✎ {t("common.edit") ?? "Edit"}
+          </button>
+          <button
+            onClick={() => { engine.commitTexts(); }}
+            className="rounded-full bg-gradient-brand px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+          >
+            ✓ {t("common.confirm")}
+          </button>
+          <button
+            onClick={() => { if (engine.activeTextId) engine.deleteText(engine.activeTextId); }}
+            className="rounded-full px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20"
+          >
+            <Trash2 className="inline h-3.5 w-3.5" strokeWidth={2.75} />
+          </button>
+        </div>
       )}
 
     </div>
@@ -711,12 +749,42 @@ function Panel({
   );
 }
 
+const BLEND_MODES: { value: import("@/lib/db").LayerBlendMode; label: string }[] = [
+  { value: "normal", label: "Normal" },
+  { value: "multiply", label: "Multiply" },
+  { value: "screen", label: "Screen" },
+  { value: "overlay", label: "Overlay" },
+  { value: "darken", label: "Darken" },
+  { value: "lighten", label: "Lighten" },
+  { value: "color-dodge", label: "Color Dodge" },
+  { value: "color-burn", label: "Color Burn" },
+  { value: "soft-light", label: "Soft Light" },
+  { value: "hard-light", label: "Hard Light" },
+  { value: "difference", label: "Difference" },
+  { value: "exclusion", label: "Exclusion" },
+  { value: "hue", label: "Hue" },
+  { value: "saturation", label: "Saturation" },
+  { value: "color", label: "Color" },
+  { value: "luminosity", label: "Luminosity" },
+];
+
 function LayersPanel({ engine }: { engine: TintEngine }) {
   const { t } = useTranslation();
   const [, force] = useState(0);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   useEffect(() => engine.subscribe(() => force((n) => n + 1)), [engine]);
 
-  const layers = [...engine.layers].reverse(); // mostrar topo em cima
+  const layers = [...engine.layers].reverse();
+
+  function startRename(id: string, current: string) {
+    setRenamingId(id);
+    setRenameValue(current);
+  }
+  function commitRename() {
+    if (renamingId) engine.renameLayer(renamingId, renameValue);
+    setRenamingId(null);
+  }
 
   return (
     <div>
@@ -732,21 +800,43 @@ function LayersPanel({ engine }: { engine: TintEngine }) {
       <div className="max-h-72 space-y-1.5 overflow-y-auto">
         {layers.map((l) => {
           const isActive = l.id === engine.activeLayerId;
+          const isRenaming = renamingId === l.id;
           return (
             <div
               key={l.id}
               className={`rounded-xl border p-2 transition ${
-                isActive
-                  ? "border-white/30 bg-white/10"
-                  : "border-white/10 bg-white/5"
+                isActive ? "border-white/30 bg-white/10" : "border-white/10 bg-white/5"
               }`}
             >
               <div className="flex items-center gap-2">
+                {isRenaming ? (
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onBlur={commitRename}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename();
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    className="flex-1 rounded-md border border-white/20 bg-white/10 px-2 py-0.5 text-sm outline-none"
+                  />
+                ) : (
+                  <button
+                    onClick={() => engine.setActiveLayer(l.id)}
+                    onDoubleClick={() => startRename(l.id, l.name)}
+                    className="flex-1 truncate text-left text-sm font-medium"
+                  >
+                    {l.name}
+                  </button>
+                )}
                 <button
-                  onClick={() => engine.setActiveLayer(l.id)}
-                  className="flex-1 truncate text-left text-sm font-medium"
+                  onClick={() => startRename(l.id, l.name)}
+                  className="rounded p-1 hover:bg-white/10"
+                  aria-label="rename"
+                  title="Rename"
                 >
-                  {l.name}
+                  <Pencil className="h-3.5 w-3.5" strokeWidth={2.5} />
                 </button>
                 <button
                   onClick={() => engine.setLayerVisible(l.id, !l.visible)}
@@ -760,6 +850,17 @@ function LayersPanel({ engine }: { engine: TintEngine }) {
                   )}
                 </button>
               </div>
+              <select
+                value={l.blendMode}
+                onChange={(e) =>
+                  engine.setLayerBlendMode(l.id, e.target.value as import("@/lib/db").LayerBlendMode)
+                }
+                className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-1 text-xs"
+              >
+                {BLEND_MODES.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
               <input
                 type="range"
                 min={0}
@@ -771,41 +872,22 @@ function LayersPanel({ engine }: { engine: TintEngine }) {
                 className="tint-slider mt-1 w-full"
               />
               <div className="mt-1 flex flex-wrap gap-1">
-                <LayerAction
-                  onClick={() => engine.moveLayer(l.id, 1)}
-                  label={t("layers.moveUp")}
-                >
+                <LayerAction onClick={() => engine.moveLayer(l.id, 1)} label={t("layers.moveUp")}>
                   <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.75} />
                 </LayerAction>
-                <LayerAction
-                  onClick={() => engine.moveLayer(l.id, -1)}
-                  label={t("layers.moveDown")}
-                >
+                <LayerAction onClick={() => engine.moveLayer(l.id, -1)} label={t("layers.moveDown")}>
                   <ArrowDown className="h-3.5 w-3.5" strokeWidth={2.75} />
                 </LayerAction>
-                <LayerAction
-                  onClick={() => engine.duplicateLayer(l.id)}
-                  label={t("layers.duplicate")}
-                >
+                <LayerAction onClick={() => engine.duplicateLayer(l.id)} label={t("layers.duplicate")}>
                   <Copy className="h-3.5 w-3.5" strokeWidth={2.75} />
                 </LayerAction>
-                <LayerAction
-                  onClick={() => engine.mergeDown(l.id)}
-                  label={t("layers.mergeDown")}
-                >
+                <LayerAction onClick={() => engine.mergeDown(l.id)} label={t("layers.mergeDown")}>
                   <Combine className="h-3.5 w-3.5" strokeWidth={2.75} />
                 </LayerAction>
-                <LayerAction
-                  onClick={() => engine.clearLayer(l.id)}
-                  label={t("layers.clear")}
-                >
+                <LayerAction onClick={() => engine.clearLayer(l.id)} label={t("layers.clear")}>
                   <Brush className="h-3.5 w-3.5" strokeWidth={2.75} />
                 </LayerAction>
-                <LayerAction
-                  onClick={() => engine.deleteLayer(l.id)}
-                  label={t("layers.delete")}
-                  danger
-                >
+                <LayerAction onClick={() => engine.deleteLayer(l.id)} label={t("layers.delete")} danger>
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={2.75} />
                 </LayerAction>
               </div>
@@ -847,23 +929,60 @@ function LayerAction({
 function ExportPanel({ engine }: { engine: TintEngine }) {
   const { t } = useTranslation();
   const [transparent, setTransparent] = useState(false);
+  const [busy, setBusy] = useState<"png" | "jpg" | "psd" | null>(null);
+  const [fallback, setFallback] = useState<{ url: string; name: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function download(blob: Blob, name: string) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Mostrar também um link manual durante 12s — se o download não disparar
+      // no Safari iOS, o utilizador pode tocar no fallback.
+      setFallback({ url, name });
+      window.setTimeout(() => {
+        setFallback((cur) => (cur && cur.url === url ? null : cur));
+        URL.revokeObjectURL(url);
+      }, 12000);
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      throw e;
+    }
+  }
 
   async function exportAs(type: "image/png" | "image/jpeg") {
-    // JPEG não suporta transparência: força fundo se necessário.
-    const useTransparent = type === "image/png" && transparent;
-    const blob = await engine.exportImage({ type, transparent: useTransparent });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `tint-${Date.now()}.${type === "image/png" ? "png" : "jpg"}`;
-    a.rel = "noopener";
-    a.target = "_blank";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      a.remove();
-      URL.revokeObjectURL(url);
-    }, 1500);
+    setErr(null);
+    setBusy(type === "image/png" ? "png" : "jpg");
+    try {
+      const useTransparent = type === "image/png" && transparent;
+      const blob = await engine.exportImage({ type, transparent: useTransparent });
+      await download(blob, `tint-${Date.now()}.${type === "image/png" ? "png" : "jpg"}`);
+    } catch (e) {
+      console.error(e);
+      setErr((e as Error).message || "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function exportPSD() {
+    setErr(null);
+    setBusy("psd");
+    try {
+      const blob = await engine.exportPSD();
+      await download(blob, `tint-${Date.now()}.psd`);
+    } catch (e) {
+      console.error(e);
+      setErr((e as Error).message || "PSD export failed");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -879,18 +998,41 @@ function ExportPanel({ engine }: { engine: TintEngine }) {
       </label>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
+          disabled={busy !== null}
           onClick={() => exportAs("image/png")}
-          className="rounded-xl bg-gradient-brand px-4 py-3 text-sm font-semibold text-primary-foreground"
+          className="rounded-xl bg-gradient-brand px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
         >
-          {t("editor.exportPng")}
+          {busy === "png" ? "…" : t("editor.exportPng")}
         </button>
         <button
+          disabled={busy !== null}
           onClick={() => exportAs("image/jpeg")}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold"
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:opacity-50"
         >
-          {t("editor.exportJpeg")}
+          {busy === "jpg" ? "…" : t("editor.exportJpeg")}
         </button>
       </div>
+      <button
+        disabled={busy !== null}
+        onClick={exportPSD}
+        className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:opacity-50"
+      >
+        {busy === "psd" ? "…" : "PSD (Photoshop)"}
+      </button>
+      {fallback && (
+        <a
+          href={fallback.url}
+          download={fallback.name}
+          target="_blank"
+          rel="noopener"
+          className="mt-3 block rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-center text-xs"
+        >
+          ⬇︎ {fallback.name}
+        </a>
+      )}
+      {err && (
+        <p className="mt-2 text-xs text-destructive">{err}</p>
+      )}
     </div>
   );
 }
@@ -1040,10 +1182,19 @@ const TEXT_FONTS = [
 
 function TextPanel({
   color,
+  initial,
   onConfirm,
   onCancel,
 }: {
   color: string;
+  initial?: {
+    text: string;
+    fontFamily: string;
+    fontSize: number;
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+  };
   onConfirm: (opts: {
     text: string;
     fontFamily: string;
@@ -1055,12 +1206,12 @@ function TextPanel({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const [text, setText] = useState("");
-  const [fontFamily, setFontFamily] = useState(TEXT_FONTS[0].id);
-  const [fontSize, setFontSize] = useState(48);
-  const [bold, setBold] = useState(false);
-  const [italic, setItalic] = useState(false);
-  const [underline, setUnderline] = useState(false);
+  const [text, setText] = useState(initial?.text ?? "");
+  const [fontFamily, setFontFamily] = useState(initial?.fontFamily ?? TEXT_FONTS[0].id);
+  const [fontSize, setFontSize] = useState(initial?.fontSize ?? 48);
+  const [bold, setBold] = useState(initial?.bold ?? false);
+  const [italic, setItalic] = useState(initial?.italic ?? false);
+  const [underline, setUnderline] = useState(initial?.underline ?? false);
 
   return (
     <div className="space-y-3">
