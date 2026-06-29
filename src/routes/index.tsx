@@ -97,7 +97,7 @@ function GalleryClient() {
       </header>
 
       <main className="mx-auto mt-6 max-w-5xl">
-        {projects && projects.length === 0 && (
+        {active.length === 0 && (
           <div className="glass mt-12 flex flex-col items-center rounded-3xl p-10 text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-brand text-primary-foreground">
               <ImageIcon className="h-8 w-8" strokeWidth={2.5} />
@@ -114,7 +114,7 @@ function GalleryClient() {
           </div>
         )}
 
-        {projects && projects.length > 0 && (
+        {active.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             <button
               onClick={() => setNewOpen(true)}
@@ -127,7 +127,7 @@ function GalleryClient() {
                 {t("gallery.new")}
               </span>
             </button>
-            {projects.map((p) => (
+            {active.map((p) => (
               <ProjectCard
                 key={p.id}
                 id={p.id}
@@ -171,6 +171,34 @@ function GalleryClient() {
             await deleteProject(deleting);
             setDeleting(null);
           }}
+        />
+      )}
+      {purging && (
+        <ConfirmDialog
+          title="Eliminar permanentemente?"
+          body="Esta acção não pode ser desfeita. As camadas serão apagadas."
+          confirmLabel={t("common.delete")}
+          danger
+          onCancel={() => setPurging(null)}
+          onConfirm={async () => {
+            await purgeProject(purging);
+            setPurging(null);
+          }}
+        />
+      )}
+      {showTrash && (
+        <TrashDrawer
+          items={trashed.map((p) => ({
+            id: p.id,
+            name: p.name,
+            width: p.width,
+            height: p.height,
+            thumbnail: p.thumbnail,
+            deletedAt: p.deletedAt!,
+          }))}
+          onClose={() => setShowTrash(false)}
+          onRestore={async (id) => { await restoreProject(id); }}
+          onPurge={(id) => setPurging(id)}
         />
       )}
     </div>
