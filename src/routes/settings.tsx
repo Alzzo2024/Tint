@@ -120,7 +120,7 @@ function SettingsClient() {
             {t("settings.about")}
           </h2>
           <p className="mt-3 text-sm text-muted-foreground">
-            Tint v0.1.0 — feito com{" "}
+            Tint v0.2.0 — feito com{" "}
             <Heart className="inline h-3.5 w-3.5 text-pink-400" />.
           </p>
           <a
