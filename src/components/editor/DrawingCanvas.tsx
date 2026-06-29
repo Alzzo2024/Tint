@@ -13,7 +13,7 @@ interface Props {
   onRedoGesture: () => void;
   /** Após uso single-shot (eyedropper / fill / select concluído), voltar ao pincel. */
   onToolConsumed?: () => void;
-  /** Quando a ferramenta de texto é usada, posição em coordenadas da tela. */
+  /** Texto novo: pediu inserir um texto em (canvasX, canvasY). */
   onTextAt?: (canvasX: number, canvasY: number) => void;
 }
 
@@ -70,6 +70,7 @@ export function DrawingCanvas({
   });
   const drawingIdRef = useRef<number | null>(null);
   const eyedropperHoldRef = useRef<number | null>(null);
+  const textDragRef = useRef<{ id: string; offX: number; offY: number } | null>(null);
   const [, force] = useState(0);
 
   // Render loop
@@ -175,8 +176,17 @@ export function DrawingCanvas({
       return;
     }
     if (tool === "text") {
+      const hit = engine.pickTextAt(canvasPt.x, canvasPt.y);
+      if (hit) {
+        const t = engine.texts.find((x) => x.id === hit)!;
+        engine.activeTextId = hit;
+        textDragRef.current = { id: hit, offX: canvasPt.x - t.x, offY: canvasPt.y - t.y };
+        engine.notify();
+        return;
+      }
+      engine.activeTextId = null;
+      engine.notify();
       onTextAt?.(canvasPt.x, canvasPt.y);
-      onToolConsumed?.();
       return;
     }
     if (tool === "pan") {
@@ -235,6 +245,12 @@ export function DrawingCanvas({
       engine.notify();
       return;
     }
+    if (textDragRef.current) {
+      const cur = engine.screenToCanvas(x, y);
+      const d = textDragRef.current;
+      engine.moveText(d.id, cur.x - d.offX, cur.y - d.offY);
+      return;
+    }
     if (gestureRef.current.kind === "select") {
       const cur = engine.screenToCanvas(x, y);
       const g = gestureRef.current;
@@ -269,6 +285,7 @@ export function DrawingCanvas({
       engine.endStroke();
       drawingIdRef.current = null;
     }
+    if (textDragRef.current) textDragRef.current = null;
     if (gestureRef.current.kind === "select" && pointersRef.current.size === 0) {
       gestureRef.current.kind = "none";
     }
