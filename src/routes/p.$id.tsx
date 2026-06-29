@@ -847,23 +847,60 @@ function LayerAction({
 function ExportPanel({ engine }: { engine: TintEngine }) {
   const { t } = useTranslation();
   const [transparent, setTransparent] = useState(false);
+  const [busy, setBusy] = useState<"png" | "jpg" | "psd" | null>(null);
+  const [fallback, setFallback] = useState<{ url: string; name: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function download(blob: Blob, name: string) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Mostrar também um link manual durante 12s — se o download não disparar
+      // no Safari iOS, o utilizador pode tocar no fallback.
+      setFallback({ url, name });
+      window.setTimeout(() => {
+        setFallback((cur) => (cur && cur.url === url ? null : cur));
+        URL.revokeObjectURL(url);
+      }, 12000);
+    } catch (e) {
+      URL.revokeObjectURL(url);
+      throw e;
+    }
+  }
 
   async function exportAs(type: "image/png" | "image/jpeg") {
-    // JPEG não suporta transparência: força fundo se necessário.
-    const useTransparent = type === "image/png" && transparent;
-    const blob = await engine.exportImage({ type, transparent: useTransparent });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `tint-${Date.now()}.${type === "image/png" ? "png" : "jpg"}`;
-    a.rel = "noopener";
-    a.target = "_blank";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      a.remove();
-      URL.revokeObjectURL(url);
-    }, 1500);
+    setErr(null);
+    setBusy(type === "image/png" ? "png" : "jpg");
+    try {
+      const useTransparent = type === "image/png" && transparent;
+      const blob = await engine.exportImage({ type, transparent: useTransparent });
+      await download(blob, `tint-${Date.now()}.${type === "image/png" ? "png" : "jpg"}`);
+    } catch (e) {
+      console.error(e);
+      setErr((e as Error).message || "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function exportPSD() {
+    setErr(null);
+    setBusy("psd");
+    try {
+      const blob = await engine.exportPSD();
+      await download(blob, `tint-${Date.now()}.psd`);
+    } catch (e) {
+      console.error(e);
+      setErr((e as Error).message || "PSD export failed");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -879,18 +916,41 @@ function ExportPanel({ engine }: { engine: TintEngine }) {
       </label>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
+          disabled={busy !== null}
           onClick={() => exportAs("image/png")}
-          className="rounded-xl bg-gradient-brand px-4 py-3 text-sm font-semibold text-primary-foreground"
+          className="rounded-xl bg-gradient-brand px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
         >
-          {t("editor.exportPng")}
+          {busy === "png" ? "…" : t("editor.exportPng")}
         </button>
         <button
+          disabled={busy !== null}
           onClick={() => exportAs("image/jpeg")}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold"
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:opacity-50"
         >
-          {t("editor.exportJpeg")}
+          {busy === "jpg" ? "…" : t("editor.exportJpeg")}
         </button>
       </div>
+      <button
+        disabled={busy !== null}
+        onClick={exportPSD}
+        className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold disabled:opacity-50"
+      >
+        {busy === "psd" ? "…" : "PSD (Photoshop)"}
+      </button>
+      {fallback && (
+        <a
+          href={fallback.url}
+          download={fallback.name}
+          target="_blank"
+          rel="noopener"
+          className="mt-3 block rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-center text-xs"
+        >
+          ⬇︎ {fallback.name}
+        </a>
+      )}
+      {err && (
+        <p className="mt-2 text-xs text-destructive">{err}</p>
+      )}
     </div>
   );
 }
