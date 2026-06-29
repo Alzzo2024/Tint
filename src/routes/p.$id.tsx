@@ -41,7 +41,7 @@ import {
 import { TintEngine, type SymmetryMode } from "@/lib/drawing/engine";
 import type { BrushKind, BrushSettings } from "@/lib/drawing/brushes";
 import { DrawingCanvas, type ToolMode } from "@/components/editor/DrawingCanvas";
-import { ColorWheel } from "@/components/editor/ColorWheel";
+import { ColorPicker } from "@/components/editor/ColorPicker";
 import { kvGet, kvSet } from "@/lib/db";
 import { useTranslation } from "@/lib/i18n";
 
@@ -437,7 +437,7 @@ function Editor() {
       {panel === "color" && (
         <Panel onClose={() => setPanel("none")} title={t("editor.color")}>
           <div className="flex flex-col items-center">
-            <ColorWheel color={brush.color} onChange={setColor} />
+            <ColorPicker color={brush.color} onChange={setColor} />
           </div>
           <div className="mt-4">
             <p className="mb-2 text-xs font-medium text-muted-foreground">
