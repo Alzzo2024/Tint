@@ -11,7 +11,7 @@ export type PresetId = (typeof PRESETS)[number]["id"];
 
 async function emptyLayerBlob(width: number, height: number): Promise<Blob> {
   const c = new OffscreenCanvas(width, height);
-  c.getContext("2d"); // criar contexto antes do convertToBlob
+  c.getContext("2d");
   return await c.convertToBlob({ type: "image/png" });
 }
 
@@ -29,6 +29,7 @@ export async function createProject(opts: {
     height: opts.height,
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
   };
   const layer: LayerRow = {
     id: nanoid(12),
@@ -37,6 +38,7 @@ export async function createProject(opts: {
     order: 0,
     opacity: 1,
     visible: true,
+    blendMode: "normal",
     blob: await emptyLayerBlob(opts.width, opts.height),
   };
   await db().transaction("rw", db().projects, db().layers, async () => {
@@ -57,6 +59,7 @@ export async function duplicateProject(id: string): Promise<string | null> {
     name: `${orig.name} (copy)`,
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
   };
   const layers = await db().layers.where("projectId").equals(id).toArray();
   const newLayers: LayerRow[] = layers.map((l) => ({
@@ -75,7 +78,18 @@ export async function renameProject(id: string, name: string) {
   await db().projects.update(id, { name, updatedAt: Date.now() });
 }
 
+/** Soft-delete: move to trash. */
 export async function deleteProject(id: string) {
+  await db().projects.update(id, { deletedAt: Date.now() });
+}
+
+/** Restore from trash. */
+export async function restoreProject(id: string) {
+  await db().projects.update(id, { deletedAt: null, updatedAt: Date.now() });
+}
+
+/** Permanently remove project + its layers. */
+export async function purgeProject(id: string) {
   await db().transaction("rw", db().projects, db().layers, async () => {
     await db().projects.delete(id);
     await db().layers.where("projectId").equals(id).delete();
