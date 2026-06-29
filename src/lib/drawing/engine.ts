@@ -225,6 +225,18 @@ export class TintEngine {
     l.visible = visible;
     this.notify();
   }
+  renameLayer(id: string, name: string) {
+    const l = this.layers.find((x) => x.id === id);
+    if (!l) return;
+    l.name = name.trim() || l.name;
+    this.notify();
+  }
+  setLayerBlendMode(id: string, mode: LayerBlendMode) {
+    const l = this.layers.find((x) => x.id === id);
+    if (!l) return;
+    l.blendMode = mode;
+    this.notify();
+  }
   moveLayer(id: string, dir: -1 | 1) {
     const idx = this.layers.findIndex((l) => l.id === id);
     if (idx < 0) return;
