@@ -90,6 +90,7 @@ function Editor() {
   const [slidersOpen, setSlidersOpen] = useState(true);
 
   const [textPending, setTextPending] = useState<{ x: number; y: number } | null>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   const [fullscreen, setFullscreen] = useState(false);
   const [recentColors, setRecentColors] = useState<string[]>([
@@ -543,18 +544,55 @@ function Editor() {
       )}
 
 
-      {panel === "text" && textPending && (
-        <Panel onClose={() => { setPanel("none"); setTextPending(null); }} title={t("text.title")}>
+      {panel === "text" && (textPending || editingTextId) && (
+        <Panel
+          onClose={() => { setPanel("none"); setTextPending(null); setEditingTextId(null); }}
+          title={t("text.title")}
+        >
           <TextPanel
             color={brush.color}
-            onCancel={() => { setPanel("none"); setTextPending(null); }}
+            initial={
+              editingTextId
+                ? engine.texts.find((x) => x.id === editingTextId) ?? undefined
+                : undefined
+            }
+            onCancel={() => { setPanel("none"); setTextPending(null); setEditingTextId(null); }}
             onConfirm={(opts) => {
-              engine.addText({ x: textPending.x, y: textPending.y, color: brush.color, ...opts });
+              if (editingTextId) {
+                engine.updateText(editingTextId, opts);
+              } else if (textPending) {
+                engine.addFloatingText({ x: textPending.x, y: textPending.y, color: brush.color, ...opts });
+              }
               setPanel("none");
               setTextPending(null);
+              setEditingTextId(null);
             }}
           />
         </Panel>
+      )}
+
+      {/* Toolbar para texto flutuante seleccionado */}
+      {engine.activeTextId && !fullscreen && (
+        <div className="pointer-events-auto absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/70 p-1 backdrop-blur">
+          <button
+            onClick={() => { setEditingTextId(engine.activeTextId); setPanel("text"); }}
+            className="rounded-full px-3 py-1.5 text-xs font-medium hover:bg-white/10"
+          >
+            ✎ {t("common.edit") ?? "Edit"}
+          </button>
+          <button
+            onClick={() => { engine.commitTexts(); }}
+            className="rounded-full bg-gradient-brand px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+          >
+            ✓ {t("common.confirm")}
+          </button>
+          <button
+            onClick={() => { if (engine.activeTextId) engine.deleteText(engine.activeTextId); }}
+            className="rounded-full px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20"
+          >
+            <Trash2 className="inline h-3.5 w-3.5" strokeWidth={2.75} />
+          </button>
+        </div>
       )}
 
     </div>
