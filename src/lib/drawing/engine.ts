@@ -117,6 +117,7 @@ export class TintEngine {
         order: row.order,
         opacity: row.opacity,
         visible: row.visible,
+        blendMode: row.blendMode ?? "normal",
         canvas,
       });
     }
@@ -134,6 +135,7 @@ export class TintEngine {
       order,
       opacity: 1,
       visible: true,
+      blendMode: "normal",
       canvas: new OffscreenCanvas(this.width, this.height),
     };
   }
