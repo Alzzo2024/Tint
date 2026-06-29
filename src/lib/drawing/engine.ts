@@ -638,8 +638,114 @@ export class TintEngine {
     return "#ffffff";
   }
 
+  // ---- Floating text objects ----
+  private fontStringFor(t: Pick<FloatingText, "fontFamily" | "fontSize" | "bold" | "italic">) {
+    return [t.italic ? "italic" : "", t.bold ? "700" : "400", `${t.fontSize}px`, t.fontFamily]
+      .filter(Boolean)
+      .join(" ");
+  }
+  private renderTexts(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.textBaseline = "top";
+    for (const t of this.texts) {
+      ctx.fillStyle = t.color;
+      ctx.font = this.fontStringFor(t);
+      let y = t.y;
+      for (const line of t.text.split("\n")) {
+        ctx.fillText(line, t.x, y);
+        if (t.underline) {
+          const m = ctx.measureText(line);
+          ctx.fillRect(t.x, y + t.fontSize * 0.95, m.width, Math.max(1, t.fontSize * 0.06));
+        }
+        y += t.fontSize * 1.2;
+      }
+      if (this.activeTextId === t.id) {
+        const m = ctx.measureText(t.text.split("\n").reduce((a, b) => (a.length > b.length ? a : b), ""));
+        const lines = t.text.split("\n").length;
+        const w = Math.max(20, m.width);
+        const h = lines * t.fontSize * 1.2;
+        const invScale = 1 / this.view.scale;
+        ctx.save();
+        ctx.lineWidth = 1.5 * invScale;
+        ctx.setLineDash([6 * invScale, 4 * invScale]);
+        ctx.strokeStyle = "#00f0ff";
+        ctx.strokeRect(t.x - 4, t.y - 4, w + 8, h + 8);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  addFloatingText(opts: Partial<FloatingText> & { x: number; y: number; text: string }): string {
+    const t: FloatingText = {
+      id: nanoid(8),
+      x: opts.x,
+      y: opts.y,
+      text: opts.text,
+      color: opts.color ?? "#1a1a1a",
+      fontFamily: opts.fontFamily ?? "Inter, sans-serif",
+      fontSize: opts.fontSize ?? 64,
+      bold: opts.bold ?? false,
+      italic: opts.italic ?? false,
+      underline: opts.underline ?? false,
+    };
+    this.texts.push(t);
+    this.activeTextId = t.id;
+    this.notify();
+    return t.id;
+  }
+  updateText(id: string, patch: Partial<FloatingText>) {
+    const t = this.texts.find((x) => x.id === id);
+    if (!t) return;
+    Object.assign(t, patch);
+    this.notify();
+  }
+  moveText(id: string, x: number, y: number) {
+    const t = this.texts.find((x) => x.id === id);
+    if (!t) return;
+    t.x = x;
+    t.y = y;
+    this.notify();
+  }
+  deleteText(id: string) {
+    this.texts = this.texts.filter((t) => t.id !== id);
+    if (this.activeTextId === id) this.activeTextId = null;
+    this.notify();
+  }
+  pickTextAt(x: number, y: number): string | null {
+    // Iterate top-down so most recent wins
+    for (let i = this.texts.length - 1; i >= 0; i--) {
+      const t = this.texts[i];
+      const lines = t.text.split("\n");
+      // Estimate width using offscreen ctx
+      const oc = new OffscreenCanvas(1, 1).getContext("2d")!;
+      oc.font = this.fontStringFor(t);
+      const w = Math.max(...lines.map((l) => oc.measureText(l).width), 20);
+      const h = lines.length * t.fontSize * 1.2;
+      if (x >= t.x - 6 && x <= t.x + w + 6 && y >= t.y - 6 && y <= t.y + h + 6) {
+        return t.id;
+      }
+    }
+    return null;
+  }
+  /** Rasterize all floating texts into the active layer. */
+  commitTexts() {
+    if (this.texts.length === 0) return;
+    const l = this.activeLayer;
+    if (!l) return;
+    const ctx = l.canvas.getContext("2d")!;
+    const before = ctx.getImageData(0, 0, this.width, this.height);
+    this.renderTexts(ctx as unknown as CanvasRenderingContext2D);
+    const after = ctx.getImageData(0, 0, this.width, this.height);
+    this.pushHistory({ layerId: l.id, before, after });
+    this.texts = [];
+    this.activeTextId = null;
+    this.notify();
+  }
+
   // ---- Persistence ----
   async saveAll(): Promise<Blob> {
+    // baked floating texts before saving
+    this.commitTexts();
     const rows: LayerRow[] = [];
     for (const l of this.layers) {
       const blob = await l.canvas.convertToBlob({ type: "image/png" });
@@ -650,6 +756,7 @@ export class TintEngine {
         order: l.order,
         opacity: l.opacity,
         visible: l.visible,
+        blendMode: l.blendMode,
         blob,
       });
     }
@@ -657,7 +764,6 @@ export class TintEngine {
       await db().layers.where("projectId").equals(this.projectId).delete();
       await db().layers.bulkPut(rows);
     });
-    // Thumbnail
     const tw = 256;
     const th = Math.round((this.height / this.width) * tw);
     const tc = new OffscreenCanvas(tw, th);
@@ -667,12 +773,12 @@ export class TintEngine {
     for (const l of this.layers) {
       if (!l.visible) continue;
       tctx.globalAlpha = l.opacity;
+      tctx.globalCompositeOperation =
+        l.blendMode === "normal" ? "source-over" : (l.blendMode as GlobalCompositeOperation);
       tctx.drawImage(l.canvas, 0, 0, tw, th);
     }
-    const thumbnail = await tc.convertToBlob({
-      type: "image/jpeg",
-      quality: 0.7,
-    });
+    tctx.globalCompositeOperation = "source-over";
+    const thumbnail = await tc.convertToBlob({ type: "image/jpeg", quality: 0.7 });
     await db().projects.update(this.projectId, {
       updatedAt: Date.now(),
       thumbnail,
@@ -680,48 +786,82 @@ export class TintEngine {
     return thumbnail;
   }
 
-  // ---- Export ----
-  async exportImage(opts: {
-    type: "image/png" | "image/jpeg";
-    transparent: boolean;
-  }): Promise<Blob> {
-    const useOffscreen =
-      typeof OffscreenCanvas !== "undefined" &&
-      typeof (OffscreenCanvas.prototype as { convertToBlob?: unknown })
-        .convertToBlob === "function";
-    const c: OffscreenCanvas | HTMLCanvasElement = useOffscreen
-      ? new OffscreenCanvas(this.width, this.height)
-      : (() => {
-          const el = document.createElement("canvas");
-          el.width = this.width;
-          el.height = this.height;
-          return el;
-        })();
-    const ctx = c.getContext("2d") as
-      | OffscreenCanvasRenderingContext2D
-      | CanvasRenderingContext2D;
-    if (!opts.transparent || opts.type === "image/jpeg") {
+  /** Build a flat composite (HTMLCanvasElement) honoring blend modes + flips + transparency. */
+  buildComposite(opts: { transparent: boolean }): HTMLCanvasElement {
+    const c = document.createElement("canvas");
+    c.width = this.width;
+    c.height = this.height;
+    const ctx = c.getContext("2d")!;
+    if (!opts.transparent) {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, this.width, this.height);
     }
     for (const l of this.layers) {
       if (!l.visible) continue;
       ctx.globalAlpha = l.opacity;
+      ctx.globalCompositeOperation =
+        l.blendMode === "normal" ? "source-over" : (l.blendMode as GlobalCompositeOperation);
       ctx.drawImage(l.canvas, 0, 0);
     }
-    if (useOffscreen) {
-      return await (c as OffscreenCanvas).convertToBlob({
-        type: opts.type,
-        quality: opts.type === "image/jpeg" ? 0.92 : undefined,
-      });
-    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    // Texts on top
+    this.renderTexts(ctx);
+    return c;
+  }
+
+  /**
+   * Export PNG/JPEG. Uses HTMLCanvasElement.toBlob for the broadest mobile support
+   * (Safari iOS in particular has flaky OffscreenCanvas.convertToBlob behaviour).
+   */
+  async exportImage(opts: {
+    type: "image/png" | "image/jpeg";
+    transparent: boolean;
+  }): Promise<Blob> {
+    const transparent = opts.transparent && opts.type === "image/png";
+    const c = this.buildComposite({ transparent });
     return await new Promise<Blob>((resolve, reject) => {
-      (c as HTMLCanvasElement).toBlob(
-        (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+      c.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("toBlob returned null"))),
         opts.type,
         opts.type === "image/jpeg" ? 0.92 : undefined,
       );
     });
+  }
+
+  /** Build a layered PSD from the current layers (preserves layer structure). */
+  async exportPSD(): Promise<Blob> {
+    const { writePsdBuffer } = await import("ag-psd");
+    const composite = this.buildComposite({ transparent: true });
+    type AgChild = {
+      name: string;
+      opacity: number;
+      hidden: boolean;
+      blendMode: string;
+      canvas: HTMLCanvasElement;
+    };
+    const children: AgChild[] = [];
+    for (const l of this.layers) {
+      const c = document.createElement("canvas");
+      c.width = this.width;
+      c.height = this.height;
+      c.getContext("2d")!.drawImage(l.canvas, 0, 0);
+      children.push({
+        name: l.name,
+        opacity: l.opacity,
+        hidden: !l.visible,
+        blendMode: l.blendMode,
+        canvas: c,
+      });
+    }
+    const psd = {
+      width: this.width,
+      height: this.height,
+      canvas: composite,
+      children,
+    };
+    const buf = writePsdBuffer(psd as unknown as Parameters<typeof writePsdBuffer>[0]);
+    return new Blob([new Uint8Array(buf)], { type: "image/vnd.adobe.photoshop" });
   }
 }
 
