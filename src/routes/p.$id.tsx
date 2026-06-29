@@ -1138,10 +1138,19 @@ const TEXT_FONTS = [
 
 function TextPanel({
   color,
+  initial,
   onConfirm,
   onCancel,
 }: {
   color: string;
+  initial?: {
+    text: string;
+    fontFamily: string;
+    fontSize: number;
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+  };
   onConfirm: (opts: {
     text: string;
     fontFamily: string;
@@ -1153,12 +1162,12 @@ function TextPanel({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const [text, setText] = useState("");
-  const [fontFamily, setFontFamily] = useState(TEXT_FONTS[0].id);
-  const [fontSize, setFontSize] = useState(48);
-  const [bold, setBold] = useState(false);
-  const [italic, setItalic] = useState(false);
-  const [underline, setUnderline] = useState(false);
+  const [text, setText] = useState(initial?.text ?? "");
+  const [fontFamily, setFontFamily] = useState(initial?.fontFamily ?? TEXT_FONTS[0].id);
+  const [fontSize, setFontSize] = useState(initial?.fontSize ?? 48);
+  const [bold, setBold] = useState(initial?.bold ?? false);
+  const [italic, setItalic] = useState(initial?.italic ?? false);
+  const [underline, setUnderline] = useState(initial?.underline ?? false);
 
   return (
     <div className="space-y-3">
