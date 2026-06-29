@@ -1,7 +1,9 @@
 import { nanoid } from "nanoid";
-import { db, type LayerRow } from "../db";
+import { db, type LayerBlendMode, type LayerRow } from "../db";
 import { renderStrokeSegment, type BrushKind, type BrushSettings } from "./brushes";
 import { floodFill } from "./fill";
+
+export type { LayerBlendMode };
 
 export type SymmetryMode = "none" | "horizontal" | "vertical" | "both";
 
@@ -27,7 +29,21 @@ export interface LayerState {
   order: number;
   opacity: number;
   visible: boolean;
+  blendMode: LayerBlendMode;
   canvas: OffscreenCanvas;
+}
+
+export interface FloatingText {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  fontFamily: string;
+  fontSize: number;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
 }
 
 interface HistoryEntry {
